@@ -78,7 +78,11 @@ Firebase är inte installerat eller aktiverat i den här versionen. Nästa fas b
 
 `npm run build` skapar `dist/`. Publicera den mappen på en statisk webbserver över HTTPS. Appen använder inga serversidor eller externa tjänster i denna fas. Använd en stabil adress för att behålla tillgången till lokalt sparade böcker.
 
-Projektet innehåller ingen automatisk publicering. Tester, kodkontroll och produktionsbygge kan köras med kommandona ovan.
+GitHub Actions bygger och publicerar appen vid varje ändring på `main`. Arbetsflödet finns i `.github/workflows/deploy.yml`. Det installerar beroenden, kör kodkontroll och tester, bygger appen och publicerar `dist/` på GitHub Pages.
+
+Välj **Settings → Pages → Source → GitHub Actions** i projektet. Arbetsflödet kan också startas manuellt från fliken **Actions**. Inga egna hemliga nycklar behövs.
+
+Appens adress är https://bit-balder.github.io/boktok/. Vite använder `/boktok/` som grundsökväg. Vid lokal utveckling öppnar du också `/boktok/`. Om projektet byter namn eller får egen domän behöver grundsökvägen ändras.
 
 ## Verifiering
 
