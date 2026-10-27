@@ -17,14 +17,16 @@ describe('bibliotekets huvudflöde', () => {
       screen.getByLabelText('Författare · en per rad'),
       'Anna Andersson',
     );
-    await user.selectOptions(screen.getByLabelText('Lässtatus'), 'reading');
+    await user.click(screen.getByRole('combobox', { name: 'Lässtatus' }));
+    await user.click(screen.getByRole('option', { name: 'Läser' }));
     await user.click(screen.getByRole('button', { name: 'Spara bok' }));
     expect(screen.getByRole('button', { name: 'Visa Min bok' })).toBeTruthy();
     view.unmount();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Visa Min bok' }));
     await user.click(screen.getByRole('button', { name: 'Redigera bok' }));
-    await user.selectOptions(screen.getByLabelText('Lässtatus'), 'finished');
+    await user.click(screen.getByRole('combobox', { name: 'Lässtatus' }));
+    await user.click(screen.getByRole('option', { name: 'Läst' }));
     await user.click(screen.getByRole('button', { name: 'Spara ändringar' }));
     expect(
       within(screen.getByRole('button', { name: 'Visa Min bok' })).getByText(
@@ -54,7 +56,7 @@ describe('bibliotekets huvudflöde', () => {
     expect((screen.getByLabelText('Titel *') as HTMLInputElement).value).toBe(
       'Osparad bok',
     );
-    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(screen.getByRole('form', { name: 'Bokuppgifter' })).toBeTruthy();
   });
   it('skyddar oläsbar lagring', () => {
     localStorage.setItem(STORAGE_KEY, 'trasig data');

@@ -3,136 +3,125 @@ import { Save } from 'lucide-react';
 import {
   statuses,
   validateBook,
-  type Book,
   type BookInput,
   type Status,
 } from '../lib/books';
 import { Button } from './ui/button';
-import { Field, Input, Select, Textarea } from './ui/field';
+import { Field, Input, Textarea } from './ui/field';
+import { Select } from './ui/select';
+import { DatePicker } from './ui/date-picker';
+import { Rating } from './ui/rating';
 export function BookForm({
-  book,
+  draft,
+  onChange,
   onSave,
   onCancel,
   error,
+  editing,
   blocked = false,
 }: {
-  book?: Book;
+  draft: BookInput;
+  onChange: (input: BookInput) => void;
   onSave: (input: BookInput) => void;
   onCancel: () => void;
   error: string;
+  editing: boolean;
   blocked?: boolean;
 }) {
   const [validation, setValidation] = useState('');
+  function patch(update: Partial<BookInput>) {
+    onChange({ ...draft, ...update });
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const text = (key: string) => String(data.get(key) || '').trim();
-    const input: BookInput = {
-      title: text('title'),
-      authors: text('authors')
-        .split('\n')
-        .map((a) => a.trim())
-        .filter(Boolean),
-      isbn: text('isbn') || undefined,
-      coverUrl: text('coverUrl') || undefined,
-      description: text('description') || undefined,
-      status: text('status') as Status,
-      startedAt: text('startedAt') || undefined,
-      finishedAt: text('finishedAt') || undefined,
-      rating: text('rating') ? Number(text('rating')) : undefined,
-      notes: text('notes') || undefined,
+    const input = {
+      ...draft,
+      title: draft.title.trim(),
+      authors: draft.authors.map((a) => a.trim()).filter(Boolean),
+      isbn: draft.isbn?.trim() || undefined,
+      coverUrl: draft.coverUrl?.trim() || undefined,
     };
     const problem = validateBook(input);
     setValidation(problem || '');
     if (!problem) onSave(input);
   }
   return (
-    <form onSubmit={submit} className="space-y-5">
+    <form aria-label="Bokuppgifter" onSubmit={submit} className="space-y-6">
       <Field label="Titel *" id="title">
         <Input
           id="title"
-          name="title"
           required
           maxLength={500}
-          defaultValue={book?.title}
+          value={draft.title}
+          onChange={(e) => patch({ title: e.target.value })}
           placeholder="Vad heter boken?"
-          autoFocus
         />
       </Field>
       <Field label="Författare · en per rad" id="authors">
         <Textarea
           id="authors"
-          name="authors"
           className="min-h-20"
-          defaultValue={book?.authors.join('\n')}
+          value={draft.authors.join('\n')}
+          onChange={(e) => patch({ authors: e.target.value.split('\n') })}
           placeholder="Författarens namn"
         />
       </Field>
+      <Field label="Lässtatus" id="status">
+        <Select
+          id="status"
+          label="Lässtatus"
+          value={draft.status}
+          onValueChange={(value) => patch({ status: value as Status })}
+          options={Object.entries(statuses).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+        />
+      </Field>
+      <Rating value={draft.rating} onChange={(rating) => patch({ rating })} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Lässtatus" id="status">
-          <Select
-            id="status"
-            name="status"
-            defaultValue={book?.status || 'want_to_read'}
-          >
-            {Object.entries(statuses).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Betyg" id="rating">
-          <Select id="rating" name="rating" defaultValue={book?.rating || ''}>
-            <option value="">Inget betyg</option>
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n} av 5
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Började läsa" id="startedAt">
-          <Input
-            type="date"
-            id="startedAt"
-            name="startedAt"
-            defaultValue={book?.startedAt}
-          />
-        </Field>
-        <Field label="Läste klart" id="finishedAt">
-          <Input
-            type="date"
-            id="finishedAt"
-            name="finishedAt"
-            defaultValue={book?.finishedAt}
-          />
-        </Field>
+        <DatePicker
+          id="startedAt"
+          label="Började läsa"
+          value={draft.startedAt}
+          onChange={(startedAt) => patch({ startedAt })}
+        />
+        <DatePicker
+          id="finishedAt"
+          label="Läste klart"
+          value={draft.finishedAt}
+          onChange={(finishedAt) => patch({ finishedAt })}
+        />
       </div>
       <Field label="Egna anteckningar" id="notes">
         <Textarea
           id="notes"
-          name="notes"
-          defaultValue={book?.notes}
+          value={draft.notes || ''}
+          onChange={(e) => patch({ notes: e.target.value })}
           placeholder="Tankar att spara till senare…"
         />
       </Field>
-      <details className="rounded-md border p-4" open={book ? true : undefined}>
-        <summary className="cursor-pointer text-sm font-medium">
+      <details
+        className="rounded-md border p-4"
+        open={editing || Boolean(draft.isbn || draft.coverUrl) || undefined}
+      >
+        <summary className="min-h-8 cursor-pointer py-1 text-sm font-medium">
           Fler bokuppgifter
         </summary>
         <div className="mt-4 space-y-4">
           <Field label="ISBN" id="isbn">
-            <Input id="isbn" name="isbn" defaultValue={book?.isbn} />
+            <Input
+              id="isbn"
+              value={draft.isbn || ''}
+              onChange={(e) => patch({ isbn: e.target.value })}
+            />
           </Field>
           <Field label="Omslagsbild · HTTPS-adress" id="coverUrl">
             <Input
               id="coverUrl"
-              name="coverUrl"
               type="url"
-              defaultValue={book?.coverUrl}
+              value={draft.coverUrl || ''}
+              onChange={(e) => patch({ coverUrl: e.target.value })}
               placeholder="https://…"
             />
           </Field>
@@ -142,8 +131,8 @@ export function BookForm({
           <Field label="Beskrivning" id="description">
             <Textarea
               id="description"
-              name="description"
-              defaultValue={book?.description}
+              value={draft.description || ''}
+              onChange={(e) => patch({ description: e.target.value })}
             />
           </Field>
         </div>
@@ -156,13 +145,13 @@ export function BookForm({
           {validation || error}
         </p>
       )}
-      <div className="flex flex-wrap justify-end gap-3 border-t pt-4">
+      <div className="flex flex-wrap justify-end gap-3 border-t pt-5">
         <Button type="button" variant="outline" onClick={onCancel}>
           Avbryt
         </Button>
         <Button type="submit" disabled={blocked}>
           <Save />
-          {book ? 'Spara ändringar' : 'Spara bok'}
+          {editing ? 'Spara ändringar' : 'Spara bok'}
         </Button>
       </div>
     </form>

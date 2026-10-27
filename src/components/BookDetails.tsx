@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Pencil, Trash2, ArrowLeft } from 'lucide-react';
 import type { Book } from '../lib/books';
+import { RatingDisplay } from './ui/rating';
 import { StatusBadge } from './StatusBadge';
 import { Dialog } from './ui/dialog';
 import { Button } from './ui/button';
@@ -65,6 +66,11 @@ export function BookDetails({
         ) : (
           <div className="space-y-5">
             <StatusBadge status={selected.status} />
+            {selected.rating && (
+              <div>
+                <RatingDisplay value={selected.rating} />
+              </div>
+            )}
             <dl className="grid grid-cols-2 gap-4 text-sm">
               {[
                 ['ISBN', selected.isbn],

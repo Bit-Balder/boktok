@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'react-day-picker/style.css';
 :root {
   --background: #f7f6f2;
   --foreground: #242d28;
@@ -10,6 +11,7 @@
   --border: #d8ddd5;
   --ring: #37765a;
   --destructive: #a32e30;
+  --destructive-foreground: #ffffff;
   --radius: 0.875rem;
 }
 @theme inline {
@@ -23,6 +25,7 @@
   --color-border: var(--border);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 0.25rem);
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -51,5 +54,53 @@
   h2,
   h3 {
     text-wrap: balance;
+  }
+}
+
+:root[data-theme='dark'] {
+  --background: #121a16;
+  --foreground: #edf1ec;
+  --card: #1b2820;
+  --primary: #a4d7b8;
+  --primary-foreground: #142e20;
+  --muted: #2b382f;
+  --muted-foreground: #b7c4b9;
+  --border: #405247;
+  --ring: #a4d7b8;
+  --destructive: #ffacaa;
+  --destructive-foreground: #401313;
+}
+.boktok-calendar {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--muted);
+  --rdp-day-height: 44px;
+  --rdp-day-width: 40px;
+  --rdp-day_button-height: 44px;
+  --rdp-day_button-width: 40px;
+  --rdp-day_button-border-radius: var(--radius-md);
+  --rdp-selected-border: 0;
+  margin: 0 auto;
+}
+.boktok-calendar .rdp-month_grid {
+  width: 100%;
+}
+.boktok-calendar .rdp-day_button:hover {
+  background: var(--muted);
+}
+.boktok-calendar .rdp-selected .rdp-day_button {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.boktok-calendar .rdp-day_button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

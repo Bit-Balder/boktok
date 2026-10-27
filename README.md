@@ -64,15 +64,43 @@ Böcker stannar i samma webbläsare och på samma webbplatsadress. Rensad webbl�
 
 Omslagsbilder hämtas från användarens angivna HTTPS-adress. Webbläsaren skickar då en förfrågan till bildens server. Appen använder inga analysverktyg.
 
+## Iteration 2
+
+- Gemensamma dropdownmenyer med rymliga tryckytor och tangentbordsstöd.
+- Kalender med månad och år via rubriken, veckor från måndag och svenska datum.
+- Fem klickbara stjärnor, tangentbordsstöd och möjlighet att rensa betyget.
+- Bottenmeny för bibliotek, bokregistrering och inställningar.
+- Ljust, mörkt och systemstyrt utseende. Valet sparas separat från böckerna.
+- Uppdateringsknapp för omladdning från hemskärmens genväg.
+- Bekräftelse innan osparade ändringar lämnas eller sidan laddas om.
+- Bokuppslag med granskning före sparning.
+- Dubblettvarning med möjlighet att se befintlig bok eller lägga till ändå.
+
+### Bokuppslag och integritet
+
+Sökningen använder Google Books först och Open Library vid tomt svar eller fel. Varje datakälla har åtta sekunders tidsgräns. Ny sökning avbryter den föregående. Uppslag använder inga egna API-nycklar. Tjänsterna kan begränsa anrop eller vara otillgängliga. Manuell registrering fungerar även då.
+
+Sökord skickas till boktjänsterna. Lässtatus, betyg och anteckningar skickas inte. Bilder hämtas när ett sparat bokkort visas.
+
+Open Librarys textsökning kan returnera ett verk med flera utgåvor. Appen väljer därför inte ett godtyckligt ISBN. Vid ISBN-sökning behåller den endast ett matchande ISBN.
+
+### Dubbletter och befintliga data
+
+Appen jämför giltiga ISBN, normaliserad titel och författare. Den jämställer ISBN-10 med motsvarande ISBN-13. Samma titel med annan eller saknad författare ger en försiktigare varning. Kontroll sker mot nyligen inläst lokal lagring vid sparning. Redigering jämför inte boken med sig själv.
+
+Iteration 2 behåller `boktok.library.v1` och tidigare bokuppgifter utan migrering. Utseendet lagras under `boktok.theme.v1`. Omladdning raderar inga sparade böcker. Utkast sparas däremot inte automatiskt. Webbläsarens stängningsvarning är ett extra skydd och kan begränsas på mobil.
+
+### Gemensamma komponenter
+
+`ui/select.tsx`, `ui/date-picker.tsx` och `ui/rating.tsx` kan användas i nya formulär. Färgerna följer centrala CSS-variabler för båda utseendena. Radix hanterar fokus och tangentbord i menyer. React DayPicker hanterar kalenderns datum och tangentbordsnavigering.
+
 ## Nästa steg
 
-1. Bokuppslag via Google Books och Open Library.
-2. ISBN-skanning med ZXing och omslagstolkning med Tesseract.js.
-3. Dubblettkontroll med möjlighet att lägga till ändå.
-4. Firebase Authentication, Firestore, testade säkerhetsregler och säker import av lokala böcker.
-5. Fullständig statistikvy och ytterligare tillgänglighetskontroller.
+1. ISBN-skanning med ZXing och omslagstolkning med Tesseract.js.
+2. Firebase Authentication, Firestore, testade säkerhetsregler och säker import av lokala böcker.
+3. Fullständig statistikvy och fler tester på fysiska mobiler.
 
-Firebase är inte installerat eller aktiverat i den här versionen. Nästa fas behöver ett Firebase-projekt och aktiverad e-postinloggning. Hemliga servernycklar får aldrig placeras i Vite-miljövariabler eller Git.
+Firebase är inte installerat eller aktiverat. Nästa fas behöver ett Firebase-projekt och aktiverad e-postinloggning. Hemliga servernycklar får aldrig placeras i Vite-miljövariabler eller Git.
 
 ## Driftsättning
 
@@ -86,4 +114,6 @@ Appens adress är https://bit-balder.github.io/boktok/. Vite använder `/boktok/
 
 ## Verifiering
 
-Elva automatiska tester täcker registrering, omladdning, redigering, borttagning, sökning och lagringsfel. Kodkontroll och produktionsbygge har också körts. Visuell kontroll i en riktig webbläsare återstår eftersom utvecklingsmiljön saknade fungerande förhandsvisning.
+Automatiska tester täcker befintlig lagring, registrering, redigering, borttagning, sökning, ISBN, datanormalisering och felhantering. De testar även dubblettval, stjärnor, kalender, tema, bokuppslag och omladdningsskydd.
+
+GitHub Actions kör tester, kodkontroll och produktionsbygge före publicering. Förhandsvisningsservern saknas i utvecklingsmiljön. Visuell mobilkontroll återstår.

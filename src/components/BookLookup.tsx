@@ -1,0 +1,161 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Search, LoaderCircle } from 'lucide-react';
+import { searchBooks, type BookResult, type SearchMode } from '../lib/lookup';
+import { Input } from './ui/field';
+import { Select } from './ui/select';
+import { Button } from './ui/button';
+import { BookCover } from './BookCover';
+export function BookLookup({
+  onChoose,
+}: {
+  onChoose: (result: BookResult) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [mode, setMode] = useState<SearchMode>('all');
+  const [results, setResults] = useState<BookResult[]>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const controller = useRef<AbortController | null>(null);
+  useEffect(() => () => controller.current?.abort(), []);
+  function reset() {
+    controller.current?.abort();
+    setLoading(false);
+    setSearched(false);
+    setResults([]);
+    setWarnings([]);
+    setError('');
+  }
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    controller.current?.abort();
+    const request = new AbortController();
+    controller.current = request;
+    setLoading(true);
+    setResults([]);
+    setError('');
+    setWarnings([]);
+    setSearched(false);
+    try {
+      const response = await searchBooks(query, mode, request.signal);
+      if (!request.signal.aborted) {
+        setResults(response.results);
+        setWarnings(response.warnings);
+        setSearched(true);
+      }
+    } catch (error) {
+      if (!request.signal.aborted)
+        setError(
+          error instanceof Error
+            ? error.message
+            : 'Sökningen misslyckades. Försök igen.',
+        );
+    } finally {
+      if (!request.signal.aborted) setLoading(false);
+    }
+  }
+  return (
+    <section
+      aria-label="Hitta bokuppgifter"
+      className="mb-7 rounded-lg border bg-muted/30 p-4 sm:p-5"
+    >
+      <h2 className="font-serif text-xl">Hitta din bok</h2>
+      <p className="mt-2 mb-4 text-sm text-muted-foreground">
+        Hämta bokuppgifter eller fyll i formuläret själv.
+      </p>
+      <form onSubmit={submit} className="space-y-3">
+        <Select
+          label="Sök med"
+          value={mode}
+          onValueChange={(value) => {
+            reset();
+            setMode(value as SearchMode);
+          }}
+          options={[
+            { value: 'all', label: 'Titel eller författare' },
+            { value: 'isbn', label: 'ISBN' },
+            { value: 'title', label: 'Titel' },
+            { value: 'author', label: 'Författare' },
+          ]}
+        />
+        <div className="flex gap-2">
+          <Input
+            aria-label="Sök i bokdatabaser"
+            value={query}
+            required
+            maxLength={250}
+            onChange={(e) => {
+              reset();
+              setQuery(e.target.value);
+            }}
+            placeholder={
+              mode === 'isbn' ? 'ISBN-10 eller ISBN-13' : 'Sök efter en bok…'
+            }
+          />
+          <Button type="submit" disabled={loading || !query.trim()}>
+            {loading ? <LoaderCircle className="animate-spin" /> : <Search />}
+            Sök
+          </Button>
+        </div>
+      </form>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        Sökningen skickas till Google Books och vid behov Open Library.
+        Anteckningar och lässtatus stannar här.
+      </p>
+      <div aria-live="polite" className="mt-3 text-sm">
+        {loading && <p>Söker efter böcker…</p>}
+        {error && (
+          <p role="alert" className="text-destructive">
+            {error}
+          </p>
+        )}
+        {warnings.map((w) => (
+          <p key={w} className="mb-2 text-muted-foreground">
+            {w}
+          </p>
+        ))}
+        {searched && !results.length && (
+          <p>
+            Inga böcker hittades. Prova en annan sökning eller fyll i
+            uppgifterna manuellt.
+          </p>
+        )}
+        {results.length > 0 && (
+          <p className="mb-3 text-muted-foreground">
+            {results.length} träffar. Välj rätt bok och granska uppgifterna.
+          </p>
+        )}
+      </div>
+      <ul className="max-h-96 space-y-2 overflow-y-auto">
+        {results.map((result) => (
+          <li key={result.key}>
+            <button
+              type="button"
+              onClick={() => onChoose(result)}
+              className="flex w-full items-start gap-3 rounded-md border bg-card p-3 text-left hover:bg-muted"
+            >
+              <BookCover
+                title={result.book.title}
+                url={result.book.coverUrl}
+                compact
+              />
+              <div className="min-w-0">
+                <span className="block font-medium">{result.book.title}</span>
+                <span className="block text-sm text-muted-foreground">
+                  {result.book.authors.join(', ') || 'Författare saknas'}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  {result.source}
+                  {result.book.isbn
+                    ? ` · ISBN ${result.book.isbn}`
+                    : ' · Utgåva behöver kontrolleras'}
+                </span>
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}

@@ -8,7 +8,7 @@ export function StatusBadge({ status }: { status: Status }) {
         status === 'finished'
           ? 'bg-primary/10 text-primary'
           : status === 'reading'
-            ? 'bg-amber-100 text-amber-900'
+            ? 'bg-muted text-foreground'
             : 'bg-muted text-muted-foreground',
       )}
     >

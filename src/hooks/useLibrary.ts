@@ -2,6 +2,11 @@ import { useState } from 'react';
 import type { Book, BookInput } from '../lib/books';
 import { validateBook } from '../lib/books';
 import { localLibrary } from '../lib/storage';
+import { findDuplicates, type Duplicate } from '../lib/duplicates';
+type SaveResult =
+  | { status: 'saved' }
+  | { status: 'error' }
+  | { status: 'duplicate'; matches: Duplicate[] };
 export function useLibrary() {
   const [initial] = useState(() => {
     try {
@@ -32,17 +37,28 @@ export function useLibrary() {
       return false;
     }
   }
-  function save(input: BookInput, id?: string) {
+  function save(
+    input: BookInput,
+    id?: string,
+    allowDuplicate = false,
+  ): SaveResult {
     const validation = validateBook(input);
     if (validation) {
       setError(validation);
-      return false;
+      return { status: 'error' };
     }
-    const now = new Date().toISOString();
-    return commit((current) => {
+    if (initial.error) return { status: 'error' };
+    try {
+      const current = localLibrary.load();
       if (id && !current.some((book) => book.id === id))
-        throw new Error('Boken har tagits bort i en annan flik.');
-      return id
+        throw new Error(
+          'Boken har tagits bort i en annan flik. Ladda om biblioteket.',
+        );
+      const matches = findDuplicates(input, current, id);
+      if (matches.length && !allowDuplicate)
+        return { status: 'duplicate', matches };
+      const now = new Date().toISOString();
+      const next = id
         ? current.map((book) =>
             book.id === id ? { ...book, ...input, updatedAt: now } : book,
           )
@@ -55,7 +71,16 @@ export function useLibrary() {
               updatedAt: now,
             },
           ];
-    });
+      localLibrary.save(next);
+      setBooks(next);
+      setError('');
+      return { status: 'saved' };
+    } catch {
+      setError(
+        'Kunde inte spara. Lagringen kan vara full, blockerad eller ändrad i en annan flik. Dina uppgifter finns kvar i formuläret.',
+      );
+      return { status: 'error' };
+    }
   }
   return {
     books,
