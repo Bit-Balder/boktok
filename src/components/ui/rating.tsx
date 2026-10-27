@@ -2,10 +2,19 @@ import { useRef } from 'react';
 import { Star } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
-export function RatingDisplay({ value }: { value: number }) {
+export function RatingDisplay({
+  value,
+  compact = false,
+}: {
+  value: number;
+  compact?: boolean;
+}) {
   return (
     <span
-      className="inline-flex gap-1"
+      className={cn(
+        'inline-flex shrink-0',
+        compact ? 'gap-px @min-[10rem]:gap-0.5' : 'gap-1',
+      )}
       role="img"
       aria-label={`Betyg ${value} av 5`}
     >
@@ -14,7 +23,7 @@ export function RatingDisplay({ value }: { value: number }) {
           key={n}
           aria-hidden="true"
           className={cn(
-            'size-4',
+            compact ? 'size-2.5 @min-[10rem]:size-3' : 'size-4',
             n <= value ? 'fill-primary text-primary' : 'text-muted-foreground',
           )}
         />

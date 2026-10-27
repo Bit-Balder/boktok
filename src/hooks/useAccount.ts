@@ -8,6 +8,7 @@ export interface AccountUser {
   uid: string;
   email: string | null;
   displayName: string | null;
+  photoURL?: string | null;
 }
 export function useAccount() {
   const [user, setUser] = useState<AccountUser | null>(null);
@@ -32,6 +33,7 @@ export function useAccount() {
                     uid: current.uid,
                     email: current.email,
                     displayName: current.displayName,
+                    photoURL: current.photoURL || null,
                   }
                 : null,
             );

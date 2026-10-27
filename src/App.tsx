@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { BookOpen, ShieldCheck } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { useLibrary } from './hooks/useLibrary';
 import { useAccount, type AccountController } from './hooks/useAccount';
 import type { LibraryController } from './lib/library';
-import { AccountPanel } from './components/AccountPanel';
+import { AccountControl } from './components/AccountControl';
 const CloudSession = lazy(() => import('./components/CloudSession'));
 import { useKeyboardViewport } from './hooks/useKeyboardViewport';
 import type { Book, BookInput } from './lib/books';
@@ -93,6 +93,7 @@ export function Workspace({
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selected, setSelected] = useState<Book | null>(null);
   const [settings, setSettings] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [duplicates, setDuplicates] = useState<{
@@ -240,8 +241,20 @@ export function Workspace({
       });
     else reload();
   }
+  function runAccountAction(run: () => void) {
+    if (library.pending) return;
+    if (dirty)
+      setConfirmation({
+        title: 'Lämna osparade ändringar?',
+        description:
+          'Spara dina ändringar innan du byter konto, eller lämna dem.',
+        label: 'Lämna ändringarna',
+        run,
+      });
+    else run();
+  }
   return (
-    <div className="app-shell min-h-dvh" data-editing={editing}>
+    <div className="app-shell min-h-dvh" data-editing={editorDirty}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-card focus:p-4"
@@ -263,10 +276,13 @@ export function Workspace({
               boktok<span className="text-primary">.</span>
             </span>
           </button>
-          <div className="flex items-center gap-2 rounded-full bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-            <ShieldCheck className="size-4" />
-            {account.user ? 'Privat molnbibliotek' : 'Sparas på din enhet'}
-          </div>
+          <AccountControl
+            account={account}
+            library={library}
+            open={accountOpen}
+            onOpenChange={setAccountOpen}
+            runAction={runAccountAction}
+          />
         </div>
       </header>
       <main id="main" className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
@@ -288,7 +304,7 @@ export function Workspace({
             <p className="mb-3 text-sm">
               Du har lokala böcker som kan importeras till ditt konto.
             </p>
-            <Button variant="outline" onClick={() => setSettings(true)}>
+            <Button variant="outline" onClick={() => setAccountOpen(true)}>
               Granska lokala böcker
             </Button>
           </div>
@@ -312,6 +328,7 @@ export function Workspace({
               <BookForm
                 key={editor.id || 'new'}
                 editing={Boolean(editor.id)}
+                actionsVisible={editorDirty}
                 draft={editor.draft}
                 onChange={(draft) => setEditor({ ...editor, draft })}
                 error={library.error}
@@ -348,24 +365,7 @@ export function Workspace({
         onRefresh={refresh}
         busy={library.pending}
         cloud={Boolean(account.user)}
-      >
-        <AccountPanel
-          account={account}
-          library={library}
-          runAction={(run) => {
-            if (library.pending) return;
-            if (dirty)
-              setConfirmation({
-                title: 'Lämna osparade ändringar?',
-                description:
-                  'Spara dina ändringar innan du byter konto, eller lämna dem.',
-                label: 'Lämna ändringarna',
-                run,
-              });
-            else run();
-          }}
-        />
-      </Settings>
+      />
       {duplicates && (
         <DuplicateDialog
           matches={duplicates.matches}

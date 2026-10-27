@@ -184,7 +184,7 @@ export function LibraryView({
         <p>
           {cloud
             ? 'Dina böcker sparas privat på ditt konto. Gästbiblioteket finns kvar på enheten.'
-            : 'Ditt gästbibliotek sparas i den här webbläsaren. Rensar du webbläsarens data försvinner gästböckerna. Logga in via Inställningar för molnlagring.'}
+            : 'Ditt gästbibliotek sparas i den här webbläsaren. Rensar du webbläsarens data försvinner gästböckerna. Logga in via knappen högst upp för molnlagring.'}
         </p>
       </footer>
     </>

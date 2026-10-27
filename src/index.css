@@ -107,7 +107,7 @@
 
 :root {
   --bottom-nav-height: 5rem;
-  --form-actions-height: 4.5rem;
+  --form-actions-height: 5rem;
   --keyboard-inset: 0px;
 }
 .app-shell {
