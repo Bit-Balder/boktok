@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { RefreshCw, Monitor, Sun, Moon } from 'lucide-react';
 import { Dialog } from './ui/dialog';
 import { Button } from './ui/button';
@@ -7,10 +8,16 @@ export function Settings({
   open,
   onOpenChange,
   onRefresh,
+  busy = false,
+  cloud = false,
+  children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => void;
+  busy?: boolean;
+  cloud?: boolean;
+  children?: ReactNode;
 }) {
   const { theme, choose, error } = useTheme();
   return (
@@ -21,6 +28,7 @@ export function Settings({
       description="Gör Boktok till ditt eget bibliotek."
     >
       <div className="space-y-7">
+        {children}
         <fieldset>
           <legend className="mb-3 text-sm font-semibold">Utseende</legend>
           <div className="grid grid-cols-3 gap-2">
@@ -70,13 +78,16 @@ export function Settings({
             Ladda om appen när du använder genvägen på hemskärmen. Dina sparade
             böcker finns kvar.
           </p>
-          <Button variant="outline" onClick={onRefresh}>
+          <Button variant="outline" disabled={busy} onClick={onRefresh}>
             <RefreshCw />
             Uppdatera appen
           </Button>
         </section>
         <p className="text-xs text-muted-foreground">
-          Boktok 0.3 · Böckerna sparas i den här webbläsaren.
+          Boktok 0.4 ·{' '}
+          {cloud
+            ? 'Ditt konto har ett privat molnbibliotek.'
+            : 'Gästböcker sparas i den här webbläsaren.'}
         </p>
       </div>
     </Dialog>

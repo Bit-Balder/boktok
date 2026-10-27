@@ -18,12 +18,14 @@ export function LibraryView({
   error,
   notice,
   onOpen,
+  cloud = false,
 }: {
   books: Book[];
   blocked: boolean;
   error: string;
   notice: string;
   onOpen: (book: Book) => void;
+  cloud?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('all');
@@ -180,8 +182,9 @@ export function LibraryView({
       <footer className="mt-12 flex items-start gap-2 border-t pt-5 text-xs leading-relaxed text-muted-foreground">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" />
         <p>
-          Ditt bibliotek sparas i den här webbläsaren. Rensar du webbläsarens
-          data försvinner böckerna. Konton och molnlagring kommer senare.
+          {cloud
+            ? 'Dina böcker sparas privat på ditt konto. Gästbiblioteket finns kvar på enheten.'
+            : 'Ditt gästbibliotek sparas i den här webbläsaren. Rensar du webbläsarens data försvinner gästböckerna. Logga in via Inställningar för molnlagring.'}
         </p>
       </footer>
     </>

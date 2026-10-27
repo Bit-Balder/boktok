@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owner(uid) { return request.auth != null && request.auth.uid == uid; }
+    function author(values, index) { return values.size() <= index || (values[index] is string && values[index].size() <= 300); }
+    function optionalText(data, key, maximum) { return !(key in data) || (data[key] is string && data[key].size() <= maximum); }
+    function date(data, key) { return !(key in data) || (data[key] is string && data[key].matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')); }
+    function book(data, bookId) {
+      return data.keys().hasAll(['id','title','authors','status','createdAt','updatedAt'])
+        && data.keys().hasOnly(['id','title','authors','status','createdAt','updatedAt','isbn','coverUrl','description','startedAt','finishedAt','rating','notes'])
+        && data.id == bookId
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 500
+        && data.authors is list && data.authors.size() <= 20
+        && author(data.authors, 0)
+          && author(data.authors, 1)
+          && author(data.authors, 2)
+          && author(data.authors, 3)
+          && author(data.authors, 4)
+          && author(data.authors, 5)
+          && author(data.authors, 6)
+          && author(data.authors, 7)
+          && author(data.authors, 8)
+          && author(data.authors, 9)
+          && author(data.authors, 10)
+          && author(data.authors, 11)
+          && author(data.authors, 12)
+          && author(data.authors, 13)
+          && author(data.authors, 14)
+          && author(data.authors, 15)
+          && author(data.authors, 16)
+          && author(data.authors, 17)
+          && author(data.authors, 18)
+          && author(data.authors, 19)
+        && data.status in ['want_to_read','reading','finished']
+        && data.createdAt is string && data.createdAt.size() <= 40
+        && data.updatedAt is string && data.updatedAt.size() <= 40
+        && optionalText(data,'isbn',32) && optionalText(data,'coverUrl',2048)
+        && optionalText(data,'description',20000) && optionalText(data,'notes',20000)
+        && (!('coverUrl' in data) || data.coverUrl.matches('^https://.*'))
+        && date(data,'startedAt') && date(data,'finishedAt')
+        && (!('startedAt' in data) || !('finishedAt' in data) || data.startedAt <= data.finishedAt)
+        && (!('rating' in data) || (data.rating is int && data.rating >= 1 && data.rating <= 5));
+    }
+    match /users/{uid}/books/{bookId} {
+      allow read, delete: if owner(uid);
+      allow create: if owner(uid) && book(request.resource.data, bookId);
+      allow update: if owner(uid) && book(request.resource.data, bookId) && request.resource.data.createdAt == resource.data.createdAt;
+    }
+    match /users/{uid}/imports/{sourceId} {
+      allow read: if owner(uid);
+      allow create: if owner(uid)
+        && sourceId.matches('^[A-Za-z0-9_-]{1,100}$')
+        && request.resource.data.keys().hasAll(['sourceId','bookId','status','createdAt'])
+        && request.resource.data.keys().hasOnly(['sourceId','bookId','status','createdAt'])
+        && request.resource.data.sourceId == sourceId
+        && request.resource.data.createdAt is string
+        && request.resource.data.createdAt.size() <= 40
+        && ((request.resource.data.status == 'skipped' && request.resource.data.bookId == '')
+          || (request.resource.data.status == 'imported' && request.resource.data.bookId == 'import-' + sourceId
+            && existsAfter(/databases/$(database)/documents/users/$(uid)/books/$(request.resource.data.bookId))));
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

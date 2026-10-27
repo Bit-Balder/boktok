@@ -32,6 +32,8 @@ jobs:
       - name: Build
         env:
           VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.FIREBASE_APPCHECK_SITE_KEY }}
         run: npm run build
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
