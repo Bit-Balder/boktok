@@ -8,3 +8,6 @@ dist/
 *-debug.log
 *-debug.*.log
 .firebase/
+
+# Generated OCR runtime and language files
+public/ocr/

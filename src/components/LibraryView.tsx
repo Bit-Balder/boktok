@@ -4,9 +4,12 @@ import {
   selectBooks,
   statuses,
   type Book,
+  type BookFilters,
   type Sort,
   type Status,
 } from '../lib/books';
+import { ReadingStats } from './ReadingStats';
+import { readingYears } from '../lib/statistics';
 import { BookCard } from './BookCard';
 import { Button } from './ui/button';
 import { Input } from './ui/field';
@@ -30,7 +33,29 @@ export function LibraryView({
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('all');
   const [sort, setSort] = useState<Sort>('newest');
-  const visible = selectBooks(books, query, status, sort);
+  const [rating, setRating] =
+    useState<NonNullable<BookFilters['rating']>>('all');
+  const [notes, setNotes] = useState<NonNullable<BookFilters['notes']>>('all');
+  const [year, setYear] = useState('all');
+  const visible = selectBooks(books, query, status, sort, {
+    rating,
+    notes,
+    year,
+  });
+  const filtered = Boolean(
+    query ||
+    status !== 'all' ||
+    rating !== 'all' ||
+    notes !== 'all' ||
+    year !== 'all',
+  );
+  function resetFilters() {
+    setQuery('');
+    setStatus('all');
+    setRating('all');
+    setNotes('all');
+    setYear('all');
+  }
   const filters: [Status | 'all', string][] = [
     ['all', 'Alla böcker'],
     ...(Object.entries(statuses) as [Status, string][]),
@@ -62,6 +87,7 @@ export function LibraryView({
           </div>
         ))}
       </div>
+      <ReadingStats books={books} />
       {error && (
         <p
           role="alert"
@@ -98,9 +124,57 @@ export function LibraryView({
             options={[
               { value: 'newest', label: 'Senast tillagda' },
               { value: 'title', label: 'Titel A–Ö' },
+              { value: 'rating', label: 'Högst betyg' },
+              { value: 'finished', label: 'Senast lästa' },
             ]}
           />
         </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Select
+            label="Filtrera på stjärnbetyg"
+            value={rating}
+            onValueChange={(value) =>
+              setRating(value as NonNullable<BookFilters['rating']>)
+            }
+            options={[
+              { value: 'all', label: 'Alla betyg' },
+              ...[5, 4, 3, 2, 1].map((n) => ({
+                value: String(n),
+                label: `${n} ${n === 1 ? 'stjärna' : 'stjärnor'}`,
+              })),
+              { value: 'unrated', label: 'Utan betyg' },
+            ]}
+          />
+          <Select
+            label="Filtrera på anteckningar"
+            value={notes}
+            onValueChange={(value) =>
+              setNotes(value as NonNullable<BookFilters['notes']>)
+            }
+            options={[
+              { value: 'all', label: 'Alla anteckningar' },
+              { value: 'with', label: 'Med anteckning' },
+              { value: 'without', label: 'Utan anteckning' },
+            ]}
+          />
+          <Select
+            label="Filtrera på läsår"
+            value={year}
+            onValueChange={setYear}
+            options={[
+              { value: 'all', label: 'Alla läsår' },
+              ...readingYears(books).map((value) => ({
+                value,
+                label: `Lästa ${value}`,
+              })),
+            ]}
+          />
+        </div>
+        {filtered && visible.length > 0 && (
+          <Button variant="ghost" onClick={resetFilters}>
+            Rensa sökning och filter
+          </Button>
+        )}
         <div className="flex flex-wrap gap-2 border-b pb-5">
           {filters.map(([value, label]) => (
             <Button
@@ -158,18 +232,12 @@ export function LibraryView({
             {blocked
               ? 'Ladda om sidan när du har kontrollerat webbläsarens lagring.'
               : books.length
-                ? 'Prova en annan titel, författare eller lässtatus.'
+                ? 'Prova en annan sökning eller ändra dina filter.'
                 : 'Lägg till en bok du har läst, läser just nu eller längtar efter att börja med.'}
           </p>
           {!blocked &&
             (books.length ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery('');
-                  setStatus('all');
-                }}
-              >
+              <Button variant="outline" onClick={resetFilters}>
                 Rensa sökning och filter
               </Button>
             ) : (

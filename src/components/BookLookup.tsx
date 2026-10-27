@@ -1,14 +1,26 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import { Search, LoaderCircle } from 'lucide-react';
 import { searchBooks, type BookResult, type SearchMode } from '../lib/lookup';
 import { Input } from './ui/field';
 import { Select } from './ui/select';
 import { Button } from './ui/button';
+import BookScanner from './BookScanner';
+import type { Book } from '../lib/books';
+import { findDuplicates } from '../lib/duplicates';
+import { canonicalIsbn } from '../lib/isbn';
 import { BookCover } from './BookCover';
 export function BookLookup({
   onChoose,
+  books = [],
 }: {
   onChoose: (result: BookResult) => void;
+  books?: Book[];
 }) {
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<SearchMode>('all');
@@ -27,8 +39,9 @@ export function BookLookup({
     setUnavailable(false);
     setError('');
   }
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  const search = useCallback(async (term: string, searchMode: SearchMode) => {
+    setQuery(term);
+    setMode(searchMode);
     controller.current?.abort();
     const request = new AbortController();
     controller.current = request;
@@ -38,7 +51,7 @@ export function BookLookup({
     setUnavailable(false);
     setSearched(false);
     try {
-      const response = await searchBooks(query, mode, request.signal);
+      const response = await searchBooks(term, searchMode, request.signal);
       if (!request.signal.aborted) {
         setResults(response.results);
         setUnavailable(response.unavailable);
@@ -55,7 +68,15 @@ export function BookLookup({
     } finally {
       if (!request.signal.aborted) setLoading(false);
     }
+  }, []);
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    void search(query, mode);
   }
+  const scannedMatch =
+    mode === 'isbn' &&
+    canonicalIsbn(query) &&
+    books.some((book) => canonicalIsbn(book.isbn) === canonicalIsbn(query));
   return (
     <section
       aria-label="Hitta bokuppgifter"
@@ -100,6 +121,13 @@ export function BookLookup({
           </Button>
         </div>
       </form>
+      <BookScanner onSearch={search} />
+      {scannedMatch && (
+        <p role="status" className="mt-3 text-sm text-primary">
+          En bok med detta ISBN finns redan i ditt bibliotek. Du kan granska
+          uppgifterna och välja en annan utgåva.
+        </p>
+      )}
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         Sökningen skickas till Google Books och vid behov Open Library.
         Anteckningar och lässtatus stannar här.
@@ -148,6 +176,11 @@ export function BookLookup({
                 <span className="block text-sm text-muted-foreground">
                   {result.book.authors.join(', ') || 'Författare saknas'}
                 </span>
+                {findDuplicates(result.book, books).length > 0 && (
+                  <span className="mt-1 block text-xs text-primary">
+                    Liknande bok finns i ditt bibliotek
+                  </span>
+                )}
                 <span className="mt-1 block text-xs text-muted-foreground">
                   {result.source}
                   {result.book.isbn

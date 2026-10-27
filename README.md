@@ -60,7 +60,7 @@ Böcker sparas under `boktok.library.v1` i LocalStorage. Formatet innehåller ve
 
 Vid sparfel behåller formuläret användarens uppgifter. Vid varje skrivning läser appen om biblioteket. Samtidiga skrivningar från flera flikar har fortfarande ingen transaktionsgaranti. Ladda om en flik för att se ändringar från andra flikar.
 
-Böcker stannar i samma webbläsare och på samma webbplatsadress. Rensad webbläsardata tar bort biblioteket. Privat surfning kan begränsa lagringen. Ingen molnlagring eller säkerhetskopia finns ännu.
+Böcker stannar i samma webbläsare och på samma webbplatsadress. Rensad webbläsardata tar bort biblioteket. Privat surfning kan begränsa lagringen. Inloggade användare kan i stället spara sitt bibliotek privat i Firestore.
 
 Omslagsbilder hämtas från användarens angivna HTTPS-adress. Webbläsaren skickar då en förfrågan till bildens server. Appen använder inga analysverktyg.
 
@@ -190,10 +190,45 @@ För manuell utveckling kan `.env.local` innehålla testvärden för Firebase-ny
 
 Prova Google-inloggning, registrering, lösenordsåterställning och utloggning på den publicerade adressen. Kontrollera med två konton att böckerna hålls isär. Prova import med en dubblett och ladda om för att kontrollera att samma lokala bok inte importeras igen. Kontrollera också att gästbiblioteket finns kvar efter utloggning. Inloggning i hemskärmens genväg och mobilens popuphantering behöver provas på riktiga enheter.
 
+## Skanning, omslagsläsning och lässtatistik
+
+Lägg till bok visar **Skanna ISBN** och **Läs bokomslag**. Redigera bok visar inte boksökningen.
+
+- ISBN-skanning använder ZXing och mobilens bakre kamera när den finns.
+- Kameran startar efter ett knapptryck. Den stannar vid träff, stängning, navigering eller när appen hamnar i bakgrunden.
+- Endast giltiga ISBN godkänns. Andra varukoder startar ingen sökning.
+- En bild av streckkoden fungerar som alternativ till kameran.
+- Skannat ISBN använder samma Google Books-sökning, Open Library-reserv och dubblettkontroll som manuell sökning.
+- Befintligt ISBN och liknande sökträffar får en markering före bokvalet.
+- Omslagsläsning använder Tesseract.js med svenska och engelska.
+- Fotografera omslaget eller välj en bild. Rätta sedan titel och författare före sökningen.
+- Ingen bok sparas automatiskt. Granska sökträffen och välj Spara bok.
+
+Bilder bearbetas på enheten och laddas inte upp. Appen skickar bara godkända sökord till boktjänsterna. Bilder över 20 MB avvisas. Bilder skalas ned till högst 2200 pixlar på längsta sidan. Läsligheten beror på ljus, skärpa och omslagets typografi. Prova JPG eller PNG om webbläsaren inte kan öppna bilden.
+
+Kameran kräver HTTPS eller localhost och tillåtelse i webbläsaren. GitHub Pages använder HTTPS. Kameraåtkomst och hemskärmens genväg behöver provas på riktiga mobiler.
+
+### Språkfiler och bygge
+
+`predev` och `prebuild` kör `scripts/prepare-ocr.mjs`. Skriptet kopierar installerad OCR-kod, WebAssembly och språkfiler till den ignorerade mappen `public/ocr/`. Vite tar med filerna i `dist/ocr/`. Inga binärfiler behöver läggas i Git. Kör `npm run build`, så följer filerna med till GitHub Pages.
+
+Appen laddar skanningskod och OCR-kod först när de används. Språkfiler hämtas från samma webbplats vid första omslagsläsningen. Ingen separat OCR-tjänst eller ny API-nyckel behövs.
+
+### Filter och statistik
+
+Biblioteket kombinerar titel/författare, lässtatus, exakt stjärnbetyg, anteckningar och läsår. Betygsfiltret har också **Utan betyg**. Anteckningsfiltret har **Med anteckning** och **Utan anteckning**. Text med bara mellanslag räknas inte som anteckning. Rensa sökning och filter återställer samtliga filter.
+
+Sortera även efter högst betyg eller senast lästa. Läsårsfilter och lässtatistik använder bara böcker med status Läst och ett giltigt läsdatum. De använder inte registreringsdatum. Statistikens årsväljare visar lästa böcker per månad och snittbetyg bland årets betygsatta böcker. Böcker utan läsdatum visas separat och får inget gissat läsår.
+
+Statistiken använder hela biblioteket och påverkas inte av bibliotekets filter. Ändringar av status, datum och betyg uppdaterar statistiken direkt. Datamodell, lokal lagring och Firestore-regler behålls.
+
+### Kontroll efter sammanfogning
+
+Prova ISBN-skanning på en fysisk mobil, även från hemskärmens genväg. Testa nekad kameraåtkomst, avbruten skanning och en bok som redan finns. Prova ett svenskt och ett engelskt bokomslag. Kontrollera redigering av tolkad text och sparning efter bokval. Prova kombinerade filter och statistik med böcker från olika läsår. Kontrollera ljust och mörkt läge.
+
 ## Nästa steg
 
-1. ISBN-skanning med ZXing och omslagstolkning med Tesseract.js.
-2. Fullständig statistikvy och fler tester på fysiska mobiler.
+Fortsätt förbättra kameraflödet utifrån prov på fysiska mobiler.
 
 Hemliga servernycklar får aldrig placeras i Vite-miljövariabler eller Git.
 
