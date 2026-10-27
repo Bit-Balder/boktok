@@ -105,6 +105,7 @@ export function Workspace({
   const editorDirty =
     editor !== null &&
     JSON.stringify(editor.draft) !== JSON.stringify(editor.initial);
+  const editorActionsVisible = Boolean(editor?.id) || editorDirty;
   const dirty = editorDirty || notesDirty;
   useEffect(() => {
     if (!dirty) return;
@@ -254,7 +255,7 @@ export function Workspace({
     else run();
   }
   return (
-    <div className="app-shell min-h-dvh" data-editing={editorDirty}>
+    <div className="app-shell min-h-dvh" data-editing={editorActionsVisible}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-card focus:p-4"
@@ -320,7 +321,7 @@ export function Workspace({
             <p className="mt-3 mb-7 text-muted-foreground">
               Titel är obligatorisk. Fyll i resten när du vill.
             </p>
-            <BookLookup onChoose={choose} />
+            {!editor.id && <BookLookup onChoose={choose} />}
             <div
               ref={formStartRef}
               className="scroll-mt-6 rounded-lg border bg-card p-5 sm:p-7"
@@ -328,7 +329,7 @@ export function Workspace({
               <BookForm
                 key={editor.id || 'new'}
                 editing={Boolean(editor.id)}
-                actionsVisible={editorDirty}
+                actionsVisible={editorActionsVisible}
                 draft={editor.draft}
                 onChange={(draft) => setEditor({ ...editor, draft })}
                 error={library.error}

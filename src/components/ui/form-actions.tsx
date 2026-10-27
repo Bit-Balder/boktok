@@ -21,7 +21,7 @@ export function FormActions({
         <Button
           type="button"
           variant="outline"
-          className="pointer-events-auto min-h-11 rounded-full border-border bg-card px-4 shadow-lg"
+          className="pointer-events-auto h-14 shrink-0 rounded-full border-border bg-card px-4 shadow-lg"
           onClick={onCancel}
         >
           Avbryt
@@ -30,7 +30,7 @@ export function FormActions({
           type="submit"
           form={formId}
           disabled={disabled}
-          className="pointer-events-auto min-h-14 min-w-40 rounded-full px-5 shadow-lg"
+          className="pointer-events-auto h-14 min-w-40 shrink-0 rounded-full px-5 shadow-lg"
         >
           <Save />
           {editing ? 'Spara ändringar' : 'Spara bok'}
