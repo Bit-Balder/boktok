@@ -32,17 +32,17 @@ function cover(value: unknown) {
     return undefined;
   }
 }
+class LookupHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
 async function get(url: string, signal: AbortSignal): Promise<unknown> {
   const response = await fetch(url, {
     signal,
     headers: { Accept: 'application/json' },
   });
-  if (!response.ok)
-    throw new Error(
-      response.status === 429
-        ? 'För många sökningar. Försök igen om en stund.'
-        : 'Boktjänsten svarade inte.',
-    );
+  if (!response.ok) throw new LookupHttpError(response.status);
   return response.json();
 }
 export function normalizeGoogle(payload: unknown): BookResult[] {
@@ -123,6 +123,8 @@ export const providers: LookupProvider[] = [
         maxResults: '12',
         printType: 'books',
       });
+      const key = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY?.trim();
+      if (key) params.set('key', key);
       return normalizeGoogle(
         await get(
           `https://www.googleapis.com/books/v1/volumes?${params}`,
@@ -154,16 +156,16 @@ export async function searchBooks(
   mode: SearchMode,
   signal: AbortSignal,
   sources = providers,
-): Promise<{ results: BookResult[]; warnings: string[] }> {
+): Promise<{ results: BookResult[]; unavailable: boolean }> {
   let term = query.trim();
-  if (!term) return { results: [], warnings: [] };
+  if (!term) return { results: [], unavailable: false };
   if (mode === 'isbn') {
     const isbn = canonicalIsbn(term);
     if (!isbn) throw new Error('Ange ett giltigt ISBN-10 eller ISBN-13.');
     term = isbn;
   }
   // Sequential fallback avoids unnecessary requests. Each provider has an independent timeout.
-  const warnings: string[] = [];
+  let unavailable = false;
   for (const source of sources) {
     if (signal.aborted)
       throw new DOMException('Avbruten sökning', 'AbortError');
@@ -175,14 +177,23 @@ export async function searchBooks(
       const results = await source.search(term, mode, controller.signal);
       if (signal.aborted)
         throw new DOMException('Avbruten sökning', 'AbortError');
-      if (results.length) return { results, warnings };
+      if (results.length) return { results, unavailable: false };
     } catch (error) {
       if (signal.aborted) throw error;
-      warnings.push(`${source.name} kunde inte nås. Försök igen senare.`);
+      unavailable = true;
+      // Never log the request URL, API key, search words or raw provider payloads.
+      console.warn(
+        `[Boktok] ${source.name}:`,
+        error instanceof LookupHttpError
+          ? `HTTP ${error.status}`
+          : controller.signal.aborted
+            ? 'TIMEOUT'
+            : 'NETWORK_ERROR',
+      );
     } finally {
       clearTimeout(timer);
       signal.removeEventListener('abort', abort);
     }
   }
-  return { results: [], warnings };
+  return { results: [], unavailable };
 }

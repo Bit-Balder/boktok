@@ -76,7 +76,7 @@ export function Settings({
           </Button>
         </section>
         <p className="text-xs text-muted-foreground">
-          Boktok 0.2 · Böckerna sparas i den här webbläsaren.
+          Boktok 0.3 · Böckerna sparas i den här webbläsaren.
         </p>
       </div>
     </Dialog>

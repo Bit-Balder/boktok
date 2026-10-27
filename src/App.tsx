@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BookOpen, ShieldCheck } from 'lucide-react';
 import { useLibrary } from './hooks/useLibrary';
+import { useKeyboardViewport } from './hooks/useKeyboardViewport';
 import type { Book, BookInput } from './lib/books';
 import type { Duplicate } from './lib/duplicates';
 import type { BookResult } from './lib/lookup';
@@ -35,6 +36,11 @@ export default function App({
   reload?: () => void;
 }) {
   const library = useLibrary();
+  useKeyboardViewport();
+  const [notesDirty, setNotesDirty] = useState(false);
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const formStartRef = useRef<HTMLDivElement>(null);
+  const saving = useRef(false);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [selected, setSelected] = useState<Book | null>(null);
   const [settings, setSettings] = useState(false);
@@ -46,9 +52,10 @@ export default function App({
   } | null>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const skipUnload = useRef(false);
-  const dirty =
+  const editorDirty =
     editor !== null &&
     JSON.stringify(editor.draft) !== JSON.stringify(editor.initial);
+  const dirty = editorDirty || notesDirty;
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -64,7 +71,7 @@ export default function App({
     titleRef.current?.focus();
   }, [editing]);
   function guard(run: () => void) {
-    if (dirty)
+    if (editorDirty)
       setConfirmation({
         title: 'Lämna osparade ändringar?',
         description:
@@ -77,6 +84,7 @@ export default function App({
   function add() {
     if (editor && !editor.id) return;
     guard(() => {
+      saving.current = false;
       const draft = emptyBook();
       setNotice('');
       setEditor({ draft, initial: draft });
@@ -88,6 +96,7 @@ export default function App({
       const { id, createdAt: _, updatedAt: __, ...draft } = book;
       void _;
       void __;
+      saving.current = false;
       setEditor({ id, draft, initial: draft });
       setSelected(null);
     });
@@ -96,7 +105,10 @@ export default function App({
     guard(() => setEditor(null));
   }
   function save(input: BookInput, allowDuplicate = false) {
+    if (saving.current) return;
+    saving.current = true;
     const result = library.save(input, editor?.id, allowDuplicate);
+    if (result.status !== 'saved') saving.current = false;
     if (result.status === 'duplicate') {
       setDuplicates({ matches: result.matches, input });
       return;
@@ -111,7 +123,8 @@ export default function App({
     if (result.status === 'error') setDuplicates(null);
   }
   function choose(result: BookResult) {
-    const apply = () =>
+    const apply = () => {
+      setScrollRequest((request) => request + 1);
       setEditor((current) =>
         current
           ? {
@@ -127,6 +140,7 @@ export default function App({
             }
           : null,
       );
+    };
     if (
       editor &&
       (editor.draft.title ||
@@ -144,6 +158,21 @@ export default function App({
       });
     else apply();
   }
+  useEffect(() => {
+    if (!scrollRequest) return;
+    const frame = requestAnimationFrame(() => {
+      const input = document.getElementById('title');
+      input?.focus({ preventScroll: true });
+      formStartRef.current?.scrollIntoView({
+        behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')
+          .matches
+          ? 'auto'
+          : 'smooth',
+        block: 'start',
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [scrollRequest]);
   function refresh() {
     if (dirty)
       setConfirmation({
@@ -161,7 +190,7 @@ export default function App({
     else reload();
   }
   return (
-    <div className="min-h-dvh pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <div className="app-shell min-h-dvh" data-editing={editing}>
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-card focus:p-4"
@@ -202,7 +231,10 @@ export default function App({
               Titel är obligatorisk. Fyll i resten när du vill.
             </p>
             <BookLookup onChoose={choose} />
-            <div className="rounded-lg border bg-card p-5 sm:p-7">
+            <div
+              ref={formStartRef}
+              className="scroll-mt-6 rounded-lg border bg-card p-5 sm:p-7"
+            >
               <BookForm
                 key={editor.id || 'new'}
                 editing={Boolean(editor.id)}
@@ -219,9 +251,8 @@ export default function App({
           <LibraryView
             books={library.books}
             blocked={library.blocked}
-            error={library.error}
+            error={selected ? '' : library.error}
             notice={notice}
-            onAdd={add}
             onOpen={setSelected}
           />
         )}
@@ -252,10 +283,15 @@ export default function App({
       )}
       {selected && (
         <BookDetails
-          selected={selected}
+          key={selected.id}
+          selected={
+            library.books.find((book) => book.id === selected.id) || selected
+          }
           setSelected={setSelected}
           onEdit={edit}
           error={library.error}
+          onUpdate={library.update}
+          onDirtyChange={setNotesDirty}
           onRemove={(id) => {
             const saved = library.remove(id);
             if (saved) setNotice('Boken har tagits bort.');

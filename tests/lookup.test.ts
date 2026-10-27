@@ -50,7 +50,7 @@ describe('bokuppslag', () => {
       '9780306406157',
     );
   });
-  it('provar nästa datakälla vid fel och behåller varningen', async () => {
+  it('provar nästa datakälla vid fel utan synlig varning', async () => {
     const fallback = vi.fn().mockResolvedValue(normalizeGoogle(fixture));
     const sources: LookupProvider[] = [
       {
@@ -66,7 +66,7 @@ describe('bokuppslag', () => {
       sources,
     );
     expect(result.results).toHaveLength(1);
-    expect(result.warnings).toHaveLength(1);
+    expect(result.unavailable).toBe(false);
     expect(fallback.mock.calls[0][0]).toBe('9780306406157');
   });
   it('provar nästa datakälla vid tomt resultat och skiljer fel från tomma träffar', async () => {
@@ -76,7 +76,7 @@ describe('bokuppslag', () => {
         empty,
         empty,
       ]),
-    ).toEqual({ results: [], warnings: [] });
+    ).toEqual({ results: [], unavailable: false });
     expect(empty.search).toHaveBeenCalledTimes(2);
   });
   it('stoppar ogiltiga ISBN och avbrutna sökningar före nätverket', async () => {

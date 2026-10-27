@@ -3,6 +3,7 @@ import type { Book, BookInput } from '../lib/books';
 import { validateBook } from '../lib/books';
 import { localLibrary } from '../lib/storage';
 import { findDuplicates, type Duplicate } from '../lib/duplicates';
+import { applyBookChange, type BookChange } from '../lib/bookChanges';
 type SaveResult =
   | { status: 'saved' }
   | { status: 'error' }
@@ -32,7 +33,7 @@ export function useLibrary() {
       return true;
     } catch {
       setError(
-        'Kunde inte spara. Webbläsarens lagring kan vara full eller blockerad. Dina ändringar finns kvar i formuläret.',
+        'Kunde inte spara ändringen. Lagringen kan vara full, blockerad eller ändrad i en annan flik. Försök igen.',
       );
       return false;
     }
@@ -87,6 +88,8 @@ export function useLibrary() {
     error,
     blocked: Boolean(initial.error),
     save,
+    update: (id: string, change: BookChange) =>
+      commit((current) => applyBookChange(current, id, change)),
     remove: (id: string) =>
       commit((current) => current.filter((b) => b.id !== id)),
   };

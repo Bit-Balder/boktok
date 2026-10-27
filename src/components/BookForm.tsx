@@ -1,12 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { Save } from 'lucide-react';
 import {
   statuses,
   validateBook,
   type BookInput,
   type Status,
 } from '../lib/books';
-import { Button } from './ui/button';
+import { FormActions } from './ui/form-actions';
 import { Field, Input, Textarea } from './ui/field';
 import { Select } from './ui/select';
 import { DatePicker } from './ui/date-picker';
@@ -46,7 +45,12 @@ export function BookForm({
     if (!problem) onSave(input);
   }
   return (
-    <form aria-label="Bokuppgifter" onSubmit={submit} className="space-y-6">
+    <form
+      id="book-form"
+      aria-label="Bokuppgifter"
+      onSubmit={submit}
+      className="space-y-6"
+    >
       <Field label="Titel *" id="title">
         <Input
           id="title"
@@ -145,15 +149,12 @@ export function BookForm({
           {validation || error}
         </p>
       )}
-      <div className="flex flex-wrap justify-end gap-3 border-t pt-5">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Avbryt
-        </Button>
-        <Button type="submit" disabled={blocked}>
-          <Save />
-          {editing ? 'Spara ändringar' : 'Spara bok'}
-        </Button>
-      </div>
+      <FormActions
+        formId="book-form"
+        editing={editing}
+        disabled={blocked || !draft.title.trim()}
+        onCancel={onCancel}
+      />
     </form>
   );
 }

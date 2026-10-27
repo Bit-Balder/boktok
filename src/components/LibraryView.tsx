@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Library, ShieldCheck } from 'lucide-react';
+import { Search, Library, ShieldCheck } from 'lucide-react';
 import {
   selectBooks,
   statuses,
@@ -17,14 +17,12 @@ export function LibraryView({
   blocked,
   error,
   notice,
-  onAdd,
   onOpen,
 }: {
   books: Book[];
   blocked: boolean;
   error: string;
   notice: string;
-  onAdd: () => void;
   onOpen: (book: Book) => void;
 }) {
   const [query, setQuery] = useState('');
@@ -49,14 +47,6 @@ export function LibraryView({
             En plats för berättelser du älskar och böcker du vill upptäcka.
           </p>
         </div>
-        <Button
-          onClick={onAdd}
-          disabled={blocked}
-          className="hidden sm:inline-flex"
-        >
-          <Plus />
-          Lägg till bok
-        </Button>
       </div>
       <div className="mb-8 grid grid-cols-3 gap-3 sm:gap-5">
         {(['want_to_read', 'reading', 'finished'] as Status[]).map((s) => (
@@ -114,6 +104,7 @@ export function LibraryView({
             <Button
               key={value}
               variant={status === value ? 'default' : 'ghost'}
+              aria-label={`${label} ${value === 'all' ? books.length : books.filter((book) => book.status === value).length}`}
               aria-pressed={status === value}
               onClick={() => setStatus(value)}
             >
@@ -126,7 +117,7 @@ export function LibraryView({
               >
                 {value === 'all'
                   ? books.length
-                  : books.filter((b) => b.status === value).length}
+                  : books.filter((book) => book.status === value).length}
               </span>
             </Button>
           ))}
@@ -180,10 +171,9 @@ export function LibraryView({
                 Rensa sökning och filter
               </Button>
             ) : (
-              <Button onClick={onAdd}>
-                <Plus />
-                Lägg till din första bok
-              </Button>
+              <p className="text-sm text-primary">
+                Välj Lägg till bok i menyn längst ner.
+              </p>
             ))}
         </div>
       )}
