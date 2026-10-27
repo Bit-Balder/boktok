@@ -20,7 +20,12 @@ export interface Book {
   updatedAt: string;
 }
 export type BookInput = Omit<Book, 'id' | 'createdAt' | 'updatedAt'>;
-export type Sort = 'newest' | 'title';
+export type Sort = 'newest' | 'title' | 'rating' | 'finished';
+export interface BookFilters {
+  rating?: 'all' | 'unrated' | '1' | '2' | '3' | '4' | '5';
+  notes?: 'all' | 'with' | 'without';
+  year?: string;
+}
 export function normalize(value: string) {
   return value
     .normalize('NFKC')
@@ -33,12 +38,28 @@ export function selectBooks(
   query: string,
   status: Status | 'all',
   sort: Sort,
+  filters: BookFilters = {},
 ) {
   const terms = normalize(query).split(/\s+/).filter(Boolean);
   return books
     .filter(
       (book) =>
         (status === 'all' || book.status === status) &&
+        (!filters.rating ||
+          filters.rating === 'all' ||
+          (filters.rating === 'unrated'
+            ? book.rating === undefined
+            : book.rating === Number(filters.rating))) &&
+        (!filters.notes ||
+          filters.notes === 'all' ||
+          (filters.notes === 'with'
+            ? Boolean(book.notes?.trim())
+            : !book.notes?.trim())) &&
+        (!filters.year ||
+          filters.year === 'all' ||
+          (book.status === 'finished' &&
+            Boolean(book.finishedAt && validDate(book.finishedAt)) &&
+            book.finishedAt?.slice(0, 4) === filters.year)) &&
         terms.every((term) =>
           normalize([book.title, ...book.authors].join(' ')).includes(term),
         ),
@@ -46,7 +67,14 @@ export function selectBooks(
     .sort((a, b) =>
       sort === 'title'
         ? a.title.localeCompare(b.title, 'sv')
-        : b.createdAt.localeCompare(a.createdAt),
+        : sort === 'rating'
+          ? (b.rating || 0) - (a.rating || 0) ||
+            b.createdAt.localeCompare(a.createdAt)
+          : sort === 'finished'
+            ? (b.status === 'finished' ? b.finishedAt || '' : '').localeCompare(
+                a.status === 'finished' ? a.finishedAt || '' : '',
+              ) || b.createdAt.localeCompare(a.createdAt)
+            : b.createdAt.localeCompare(a.createdAt),
     );
 }
 export function validCover(value: string) {

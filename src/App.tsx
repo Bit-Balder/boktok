@@ -321,7 +321,9 @@ export function Workspace({
             <p className="mt-3 mb-7 text-muted-foreground">
               Titel är obligatorisk. Fyll i resten när du vill.
             </p>
-            {!editor.id && <BookLookup onChoose={choose} />}
+            {!editor.id && (
+              <BookLookup onChoose={choose} books={library.books} />
+            )}
             <div
               ref={formStartRef}
               className="scroll-mt-6 rounded-lg border bg-card p-5 sm:p-7"
