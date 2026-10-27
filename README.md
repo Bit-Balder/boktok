@@ -78,9 +78,9 @@ Omslagsbilder hämtas från användarens angivna HTTPS-adress. Webbläsaren skic
 
 ### Bokuppslag och integritet
 
-Sökningen använder Google Books först och Open Library vid tomt svar eller fel. Varje datakälla har åtta sekunders tidsgräns. Ny sökning avbryter den föregående. Google Books använder en konfigurerad webbläsarnyckel när den finns. Open Library behöver ingen nyckel. Tjänsterna kan begränsa anrop eller vara otillgängliga. Manuell registrering fungerar även då.
+Sökningen använder Libris först, Google Books därefter och Open Library sist vid tomt svar eller fel. Varje datakälla har åtta sekunders tidsgräns. Ny sökning avbryter den föregående. Google Books använder en konfigurerad webbläsarnyckel när den finns. Libris och Open Library behöver ingen nyckel. Tjänsterna kan begränsa anrop eller vara otillgängliga. Manuell registrering fungerar även då.
 
-Sökord skickas till boktjänsterna. Lässtatus, betyg och anteckningar skickas inte. Bilder hämtas när ett sparat bokkort visas.
+Sökord skickas till Libris och vid behov Google Books och Open Library. Lässtatus, betyg och anteckningar skickas inte. Bilder hämtas när ett sparat bokkort visas.
 
 Open Librarys textsökning kan returnera ett verk med flera utgåvor. Appen väljer därför inte ett godtyckligt ISBN. Vid ISBN-sökning behåller den endast ett matchande ISBN.
 
@@ -120,7 +120,7 @@ GitHub Actions skickar värdet till `VITE_GOOGLE_BOOKS_API_KEY` endast vid produ
 
 Nyckeln ingår i den offentliga webbläsarkoden. GitHub Secrets håller den utanför källkoden men gör den inte hemlig i den publicerade appen. Därför krävs API- och webbplatsbegränsningarna. En helt hemlig nyckel behöver en serverfunktion.
 
-Vid lokal utveckling kopierar du `.env.example` till `.env.local` och fyller i `VITE_GOOGLE_BOOKS_API_KEY`. Använd en separat utvecklingsnyckel med en lokal webbplatsbegränsning vid behov. Checka aldrig in `.env.local` eller riktiga nycklar. Nyckeln kan lämnas tom för manuell registrering och Open Library som reservkälla.
+Vid lokal utveckling kopierar du `.env.example` till `.env.local` och fyller i `VITE_GOOGLE_BOOKS_API_KEY`. Använd en separat utvecklingsnyckel med en lokal webbplatsbegränsning vid behov. Checka aldrig in `.env.local` eller riktiga nycklar. Nyckeln kan lämnas tom för Libris, manuell registrering och Open Library som reservkälla.
 
 ### Kontroll efter sammanfogning
 
@@ -190,29 +190,31 @@ För manuell utveckling kan `.env.local` innehålla testvärden för Firebase-ny
 
 Prova Google-inloggning, registrering, lösenordsåterställning och utloggning på den publicerade adressen. Kontrollera med två konton att böckerna hålls isär. Prova import med en dubblett och ladda om för att kontrollera att samma lokala bok inte importeras igen. Kontrollera också att gästbiblioteket finns kvar efter utloggning. Inloggning i hemskärmens genväg och mobilens popuphantering behöver provas på riktiga enheter.
 
-## Skanning, omslagsläsning och lässtatistik
+## Libris först och ISBN-skanning
 
-Lägg till bok visar **Skanna ISBN** och **Läs bokomslag**. Redigera bok visar inte boksökningen.
+Boksökningen frågar Libris först, Google Books därefter och Open Library sist. Nästa källa används när den föregående saknar användbara träffar, ger ett fel eller når tidsgränsen. Gränssnittet visar vilken källa som gav bokuppgifterna.
+
+Libris använder `https://libris.kb.se/find.jsonld` och behöver ingen API-nyckel. Sökningen begränsas till utgåvor (`Instance`), så bibliotekens exemplarposter inte visas som separata böcker. Fritext söker titel eller författare. Valen Titel och Författare använder särskilda fältfilter och kontrollerar även resultatets bokuppgifter. Upp till 40 poster hämtas och högst 12 användbara träffar visas.
+
+ISBN-sökning frågar efter ISBN-13 och motsvarande ISBN-10 när det finns. Alla källor kontrollerar att resultatets ISBN matchar den sökta utgåvan. Appen tar inte ISBN från relaterade verk och fyller inte i ett annat ISBN automatiskt. Titel, författare, bild och sammanfattning fylls i när källan erbjuder dem. Saknade bilder eller sammanfattningar innebär inte att nästa källa frågas.
+
+Libris API-dokumentation finns på https://github.com/libris/libris-api-docs. HTTP-prov med Boktoks Origin-header tilläts av Libris. Fullständig kontroll från den publicerade appens webbläsare görs efter sammanfogning.
+
+### ISBN-skanning
+
+Lägg till bok visar **Skanna ISBN**. Redigera bok visar inte boksökningen.
 
 - ISBN-skanning använder ZXing och mobilens bakre kamera när den finns.
-- Kameran startar efter ett knapptryck. Den stannar vid träff, stängning, navigering eller när appen hamnar i bakgrunden.
+- Kameran startar efter ett knapptryck och stannar vid träff, stängning, navigering eller bakgrundsläge.
 - Endast giltiga ISBN godkänns. Andra varukoder startar ingen sökning.
 - En bild av streckkoden fungerar som alternativ till kameran.
-- Skannat ISBN använder samma Google Books-sökning, Open Library-reserv och dubblettkontroll som manuell sökning.
+- Skannat ISBN använder samma Libris-sökning, reservkällor och dubblettkontroll som manuell sökning.
 - Befintligt ISBN och liknande sökträffar får en markering före bokvalet.
-- Omslagsläsning använder Tesseract.js med svenska och engelska.
-- Fotografera omslaget eller välj en bild. Rätta sedan titel och författare före sökningen.
 - Ingen bok sparas automatiskt. Granska sökträffen och välj Spara bok.
 
-Bilder bearbetas på enheten och laddas inte upp. Appen skickar bara godkända sökord till boktjänsterna. Bilder över 20 MB avvisas. Bilder skalas ned till högst 2200 pixlar på längsta sidan. Läsligheten beror på ljus, skärpa och omslagets typografi. Prova JPG eller PNG om webbläsaren inte kan öppna bilden.
+Bilder behandlas på enheten och laddas inte upp. Bilder över 20 MB avvisas. Bilder skalas ned till högst 2200 pixlar på längsta sidan. Kameran kräver HTTPS eller localhost och tillåtelse i webbläsaren. GitHub Pages använder HTTPS.
 
-Kameran kräver HTTPS eller localhost och tillåtelse i webbläsaren. GitHub Pages använder HTTPS. Kameraåtkomst och hemskärmens genväg behöver provas på riktiga mobiler.
-
-### Språkfiler och bygge
-
-`predev` och `prebuild` kör `scripts/prepare-ocr.mjs`. Skriptet kopierar installerad OCR-kod, WebAssembly och språkfiler till den ignorerade mappen `public/ocr/`. Vite tar med filerna i `dist/ocr/`. Inga binärfiler behöver läggas i Git. Kör `npm run build`, så följer filerna med till GitHub Pages.
-
-Appen laddar skanningskod och OCR-kod först när de används. Språkfiler hämtas från samma webbplats vid första omslagsläsningen. Ingen separat OCR-tjänst eller ny API-nyckel behövs.
+Omslagsläsning med Tesseract har tagits bort. OCR-kod, språkfiler, beroenden och förskript ingår inte längre i bygget. ISBN-skanningen behöver inga språkfiler eller nya nycklar.
 
 ### Filter och statistik
 
@@ -224,7 +226,7 @@ Statistiken använder hela biblioteket och påverkas inte av bibliotekets filter
 
 ### Kontroll efter sammanfogning
 
-Prova ISBN-skanning på en fysisk mobil, även från hemskärmens genväg. Testa nekad kameraåtkomst, avbruten skanning och en bok som redan finns. Prova ett svenskt och ett engelskt bokomslag. Kontrollera redigering av tolkad text och sparning efter bokval. Prova kombinerade filter och statistik med böcker från olika läsår. Kontrollera ljust och mörkt läge.
+Prova ISBN-skanning på en fysisk mobil, även från hemskärmens genväg. Testa nekad kameraåtkomst, avbruten skanning och en bok som redan finns. Prova ISBN, titel och författare i Libris. Kontrollera rätt utgåva och sparning efter bokval. Kontrollera att omslagsläsning inte längre visas. Prova kombinerade filter och statistik med böcker från olika läsår. Kontrollera ljust och mörkt läge.
 
 ## Nästa steg
 

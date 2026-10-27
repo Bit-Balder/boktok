@@ -129,8 +129,8 @@ export function BookLookup({
         </p>
       )}
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-        Sökningen skickas till Google Books och vid behov Open Library.
-        Anteckningar och lässtatus stannar här.
+        Sökningen går först till Libris, sedan vid behov Google Books och Open
+        Library. Anteckningar och lässtatus stannar här.
       </p>
       <div aria-live="polite" className="mt-3 text-sm">
         {loading && <p>Söker efter böcker…</p>}

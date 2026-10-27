@@ -7,23 +7,6 @@ export function isbnFromBarcode(text: string) {
   return canonicalIsbn(text.trim());
 }
 
-export function coverSearchText(text: string) {
-  return text
-    .normalize('NFKC')
-    .split(/\r?\n/)
-    .map((line) =>
-      line
-        .replace(/[^\p{L}\p{N}'’&:,.!?\s-]/gu, ' ')
-        .replace(/\s+/g, ' ')
-        .trim(),
-    )
-    .filter((line) => /\p{L}{2}/u.test(line))
-    .slice(0, 8)
-    .join(' ')
-    .slice(0, 250)
-    .trim();
-}
-
 export function cameraMessage(error: unknown) {
   const name =
     error && typeof error === 'object' && 'name' in error ? error.name : '';

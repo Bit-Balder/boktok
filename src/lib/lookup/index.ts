@@ -1,5 +1,6 @@
 import type { BookInput } from '../books';
 import { canonicalIsbn } from '../isbn';
+import { librisParams, normalizeLibris } from './libris';
 export type SearchMode = 'all' | 'isbn' | 'title' | 'author';
 export interface BookResult {
   key: string;
@@ -37,15 +38,23 @@ class LookupHttpError extends Error {
     super(`HTTP ${status}`);
   }
 }
-async function get(url: string, signal: AbortSignal): Promise<unknown> {
+async function get(
+  url: string,
+  signal: AbortSignal,
+  accept = 'application/json',
+): Promise<unknown> {
   const response = await fetch(url, {
     signal,
-    headers: { Accept: 'application/json' },
+    headers: { Accept: accept },
+    credentials: 'omit',
   });
   if (!response.ok) throw new LookupHttpError(response.status);
   return response.json();
 }
-export function normalizeGoogle(payload: unknown): BookResult[] {
+export function normalizeGoogle(
+  payload: unknown,
+  searchedIsbn?: string,
+): BookResult[] {
   const data = record(payload);
   if (!Array.isArray(data.items)) return [];
   return data.items.flatMap((item): BookResult[] => {
@@ -58,6 +67,7 @@ export function normalizeGoogle(payload: unknown): BookResult[] {
           .map((id) => canonicalIsbn(string(record(id).identifier)))
           .filter(Boolean)
       : [];
+    if (searchedIsbn && !ids.includes(searchedIsbn)) return [];
     return [
       {
         key: `google:${string(raw.id) || title}`,
@@ -65,7 +75,7 @@ export function normalizeGoogle(payload: unknown): BookResult[] {
         book: {
           title,
           authors: strings(info.authors),
-          isbn: ids[0],
+          isbn: searchedIsbn || ids[0],
           coverUrl: cover(record(info.imageLinks).thumbnail),
           description: string(info.description) || undefined,
           status: 'want_to_read',
@@ -90,6 +100,7 @@ export function normalizeOpenLibrary(
       strings(info.isbn).some((i) => canonicalIsbn(i) === searchedIsbn)
         ? searchedIsbn
         : undefined;
+    if (searchedIsbn && !matched) return [];
     return [
       {
         key: `openlibrary:${string(info.key) || title}`,
@@ -109,6 +120,21 @@ export function normalizeOpenLibrary(
   });
 }
 export const providers: LookupProvider[] = [
+  {
+    name: 'Libris',
+    async search(query, mode, signal) {
+      const params = librisParams(query, mode);
+      return normalizeLibris(
+        await get(
+          `https://libris.kb.se/find.jsonld?${params}`,
+          signal,
+          'application/ld+json',
+        ),
+        query,
+        mode,
+      );
+    },
+  },
   {
     name: 'Google Books',
     async search(query, mode, signal) {
@@ -130,6 +156,7 @@ export const providers: LookupProvider[] = [
           `https://www.googleapis.com/books/v1/volumes?${params}`,
           signal,
         ),
+        mode === 'isbn' ? query : undefined,
       );
     },
   },

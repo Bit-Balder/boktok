@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   isbnFromBarcode,
-  coverSearchText,
   cameraMessage,
   validatePhoto,
 } from '../src/lib/scanning';
@@ -17,7 +16,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-describe('ISBN och omslagstext', () => {
+describe('ISBN och bilder', () => {
   it('godkänner ISBN men avvisar andra varukoder och fel kontrollsiffra', () => {
     expect(isbnFromBarcode('9780306406157')).toBe('9780306406157');
     expect(isbnFromBarcode('0-306-40615-2')).toBe('9780306406157');
@@ -26,13 +25,6 @@ describe('ISBN och omslagstext', () => {
     expect(
       isbnFromBarcode('https://example.com/9780306406157'),
     ).toBeUndefined();
-  });
-  it('rensar omslagstext, behåller svenska bokstäver och begränsar söklängden', () => {
-    expect(coverSearchText(' ÅSA LARSSON\n***\n  Solstorm  \n  ')).toBe(
-      'ÅSA LARSSON Solstorm',
-    );
-    expect(coverSearchText('Ord '.repeat(100)).length).toBeLessThanOrEqual(250);
-    expect(coverSearchText('123\n***')).toBe('');
   });
   it('ger begripliga kamerafel och avvisar för stora eller felaktiga filer', () => {
     expect(cameraMessage(new DOMException('', 'NotAllowedError'))).toContain(
