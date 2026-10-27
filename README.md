@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-Öppna adressen som Vite visar. Inga miljövariabler eller externa konton behövs för den första versionen.
+Öppna adressen som Vite visar. Manuell bokregistrering behöver inga miljövariabler eller externa konton. Konfigurera Google Books enligt avsnittet nedan.
 
 ```sh
 npm test
@@ -78,7 +78,7 @@ Omslagsbilder hämtas från användarens angivna HTTPS-adress. Webbläsaren skic
 
 ### Bokuppslag och integritet
 
-Sökningen använder Google Books först och Open Library vid tomt svar eller fel. Varje datakälla har åtta sekunders tidsgräns. Ny sökning avbryter den föregående. Uppslag använder inga egna API-nycklar. Tjänsterna kan begränsa anrop eller vara otillgängliga. Manuell registrering fungerar även då.
+Sökningen använder Google Books först och Open Library vid tomt svar eller fel. Varje datakälla har åtta sekunders tidsgräns. Ny sökning avbryter den föregående. Google Books använder en konfigurerad webbläsarnyckel när den finns. Open Library behöver ingen nyckel. Tjänsterna kan begränsa anrop eller vara otillgängliga. Manuell registrering fungerar även då.
 
 Sökord skickas till boktjänsterna. Lässtatus, betyg och anteckningar skickas inte. Bilder hämtas när ett sparat bokkort visas.
 
@@ -94,6 +94,38 @@ Iteration 2 behåller `boktok.library.v1` och tidigare bokuppgifter utan migreri
 
 `ui/select.tsx`, `ui/date-picker.tsx` och `ui/rating.tsx` kan användas i nya formulär. Färgerna följer centrala CSS-variabler för båda utseendena. Radix hanterar fokus och tangentbord i menyer. React DayPicker hanterar kalenderns datum och tangentbordsnavigering.
 
+## Iteration 3 – snabbhantering
+
+Bokvyn sparar lässtatus och betyg direkt. Läst föreslår dagens datum när slutdatum saknas. Kalendern tillåter äldre datum. Tidigare datum bevaras vid andra statusändringar. Klick på vald stjärna tar bort betyget, även i bokformuläret. Tangentbordets piltangenter väljer betyg och mellanslag växlar valt betyg.
+
+Anteckningar öppnas med knappen mellan Redigera och Ta bort. Textfältet ligger under stjärnorna. Sparning stänger textfältet. En diskret prick visar att en anteckning finns. Tom text tar bort anteckningen och pricken. Osparad text skyddas vid stängning och redigering. Borttagning kräver bekräftelse.
+
+Snabbändringar läser biblioteket på nytt och ändrar bara berörda fält. Uppgifter från andra flikar bevaras. Gränssnittet uppdateras efter lyckad skrivning. Fel lämnar sparade värden oförändrade. Fullständig bokredigering använder fortsatt dubblettkontrollen.
+
+Lägg till bok finns i bottenmenyn. Spara och Avbryt ligger i en gemensam fast yta ovanför bottenmenyn. Sidans marginaler lämnar plats för knapparna. Visual Viewport används när webbläsaren rapporterar ett överlagrande skärmtangentbord. Dialoger anpassas till synlig höjd. Beteendet behöver fortfarande provas på fysiska mobiler, särskilt iOS och hemskärmens genväg.
+
+Efter val av sökträff fokuserar appen titeln och scrollar till bokuppgifterna. Mjuk scrollning respekterar systemets inställning för minskad rörelse.
+
+Sökfel loggas med källa och feltyp i konsolen. Appen loggar aldrig nyckel, sökord, anropsadress eller råa felsvar. Lyckad reservsökning visar ingen varning. Om sökningen misslyckas visas ett kort meddelande. Tomma svar från fungerande källor visas som inga träffar.
+
+### Google Books API-nyckel
+
+1. Aktivera **Books API** i Google Cloud-projektet.
+2. Skapa en separat standardnyckel för Books API. Återanvänd inte Firebase-nyckeln.
+3. Begränsa nyckeln till **Books API** och **Websites**.
+4. Tillåt `https://bit-balder.github.io` och `https://bit-balder.github.io/*`.
+5. Lägg nyckeln i projektets **Settings → Secrets and variables → Actions** som `GOOGLE_BOOKS_API_KEY`.
+
+GitHub Actions skickar värdet till `VITE_GOOGLE_BOOKS_API_KEY` endast vid produktionsbygget. Kopplingen börjar användas när ändringarna sammanfogas till `main` och publiceras.
+
+Nyckeln ingår i den offentliga webbläsarkoden. GitHub Secrets håller den utanför källkoden men gör den inte hemlig i den publicerade appen. Därför krävs API- och webbplatsbegränsningarna. En helt hemlig nyckel behöver en serverfunktion.
+
+Vid lokal utveckling kopierar du `.env.example` till `.env.local` och fyller i `VITE_GOOGLE_BOOKS_API_KEY`. Använd en separat utvecklingsnyckel med en lokal webbplatsbegränsning vid behov. Checka aldrig in `.env.local` eller riktiga nycklar. Nyckeln kan lämnas tom för manuell registrering och Open Library som reservkälla.
+
+### Kontroll efter sammanfogning
+
+Prova Google Books på den publicerade adressen efter bygget. Kontrollera status, stjärnor, anteckningar och omladdning. Prova även liten mobilskärm, ljust och mörkt läge, kalender och fasta knappar med öppet tangentbord. Lokala tester använder simulerade boktjänster och en testnyckel. De verifierar inte den riktiga nyckelns Google-inställningar.
+
 ## Nästa steg
 
 1. ISBN-skanning med ZXing och omslagstolkning med Tesseract.js.
@@ -104,7 +136,7 @@ Firebase är inte installerat eller aktiverat. Nästa fas behöver ett Firebase-
 
 ## Driftsättning
 
-`npm run build` skapar `dist/`. Publicera den mappen på en statisk webbserver över HTTPS. Appen använder inga serversidor eller externa tjänster i denna fas. Använd en stabil adress för att behålla tillgången till lokalt sparade böcker.
+`npm run build` skapar `dist/`. Publicera den mappen på en statisk webbserver över HTTPS. Appen behöver ingen egen server. Bokuppslag kontaktar externa boktjänster. Använd en stabil adress för att behålla tillgången till lokalt sparade böcker.
 
 GitHub Actions bygger och publicerar appen vid varje ändring på `main`. Arbetsflödet finns i `.github/workflows/deploy.yml`. Det installerar beroenden, kör kodkontroll och tester, bygger appen och publicerar `dist/` på GitHub Pages.
 

@@ -13,7 +13,7 @@ export function BookLookup({
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<SearchMode>('all');
   const [results, setResults] = useState<BookResult[]>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
+  const [unavailable, setUnavailable] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -24,7 +24,7 @@ export function BookLookup({
     setLoading(false);
     setSearched(false);
     setResults([]);
-    setWarnings([]);
+    setUnavailable(false);
     setError('');
   }
   async function submit(e: FormEvent) {
@@ -35,21 +35,22 @@ export function BookLookup({
     setLoading(true);
     setResults([]);
     setError('');
-    setWarnings([]);
+    setUnavailable(false);
     setSearched(false);
     try {
       const response = await searchBooks(query, mode, request.signal);
       if (!request.signal.aborted) {
         setResults(response.results);
-        setWarnings(response.warnings);
+        setUnavailable(response.unavailable);
         setSearched(true);
       }
     } catch (error) {
       if (!request.signal.aborted)
         setError(
-          error instanceof Error
+          error instanceof Error &&
+            error.message === 'Ange ett giltigt ISBN-10 eller ISBN-13.'
             ? error.message
-            : 'Sökningen misslyckades. Försök igen.',
+            : 'Sökningen kunde inte slutföras. Försök igen.',
         );
     } finally {
       if (!request.signal.aborted) setLoading(false);
@@ -110,17 +111,19 @@ export function BookLookup({
             {error}
           </p>
         )}
-        {warnings.map((w) => (
-          <p key={w} className="mb-2 text-muted-foreground">
-            {w}
-          </p>
-        ))}
-        {searched && !results.length && (
-          <p>
-            Inga böcker hittades. Prova en annan sökning eller fyll i
-            uppgifterna manuellt.
-          </p>
-        )}
+        {searched &&
+          !results.length &&
+          (unavailable ? (
+            <p role="alert">
+              Sökningen kunde inte slutföras. Försök igen eller fyll i
+              uppgifterna manuellt.
+            </p>
+          ) : (
+            <p>
+              Inga böcker hittades. Prova en annan sökning eller fyll i
+              uppgifterna manuellt.
+            </p>
+          ))}
         {results.length > 0 && (
           <p className="mb-3 text-muted-foreground">
             {results.length} träffar. Välj rätt bok och granska uppgifterna.

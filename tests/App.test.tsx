@@ -9,9 +9,7 @@ describe('bibliotekets huvudflöde', () => {
   it('lägger till, bevarar efter omladdning, redigerar och tar bort en bok', async () => {
     const user = userEvent.setup();
     const view = render(<App />);
-    await user.click(
-      screen.getByRole('button', { name: 'Lägg till din första bok' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
     await user.type(screen.getByLabelText('Titel *'), 'Min bok');
     await user.type(
       screen.getByLabelText('Författare · en per rad'),
@@ -45,9 +43,7 @@ describe('bibliotekets huvudflöde', () => {
   it('behåller formuläret vid sparfel', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(
-      screen.getByRole('button', { name: 'Lägg till din första bok' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
     await user.type(screen.getByLabelText('Titel *'), 'Osparad bok');
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('Fullt');

@@ -30,6 +30,8 @@ jobs:
       - name: Run tests
         run: npm test
       - name: Build
+        env:
+          VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
         run: npm run build
       - name: Upload site
         uses: actions/upload-pages-artifact@v3

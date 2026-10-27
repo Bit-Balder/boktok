@@ -104,3 +104,45 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+:root {
+  --bottom-nav-height: 5rem;
+  --form-actions-height: 4.5rem;
+  --keyboard-inset: 0px;
+}
+.app-shell {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + env(safe-area-inset-bottom) +
+      var(--keyboard-inset) + 2rem
+  );
+}
+.app-shell[data-editing='true'] {
+  padding-bottom: calc(
+    var(--bottom-nav-height) + var(--form-actions-height) +
+      env(safe-area-inset-bottom) + var(--keyboard-inset) + 2rem
+  );
+}
+.app-bottom-nav {
+  bottom: var(--keyboard-inset);
+}
+.form-actions {
+  position: fixed;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  bottom: calc(
+    var(--bottom-nav-height) + env(safe-area-inset-bottom) +
+      var(--keyboard-inset)
+  );
+}
+html {
+  scroll-padding-block: 1.5rem
+    calc(
+      var(--bottom-nav-height) + var(--form-actions-height) +
+        env(safe-area-inset-bottom) + var(--keyboard-inset) + 1rem
+    );
+}
+
+.dialog-content {
+  top: calc(var(--visible-top, 0px) + var(--visible-height, 100dvh) / 2);
+}

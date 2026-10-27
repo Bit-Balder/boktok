@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Star } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from './button';
@@ -28,35 +29,63 @@ export function Rating({
   value?: number;
   onChange: (value: number | undefined) => void;
 }) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">Betyg</legend>
       <div className="flex flex-wrap items-center gap-x-2">
         <div className="flex" role="radiogroup" aria-label="Betyg">
           {[1, 2, 3, 4, 5].map((n) => (
-            <label
+            <button
               key={n}
-              className="relative flex size-11 cursor-pointer items-center justify-center rounded-md hover:bg-muted"
+              type="button"
+              role="radio"
+              aria-label={`${n} av 5 stjärnor`}
+              aria-checked={value === n}
+              tabIndex={value === n || (!value && n === 1) ? 0 : -1}
+              ref={(node) => {
+                buttons.current[n - 1] = node;
+              }}
+              onClick={() => onChange(value === n ? undefined : n)}
+              onKeyDown={(event) => {
+                const keys = [
+                  'ArrowRight',
+                  'ArrowDown',
+                  'ArrowLeft',
+                  'ArrowUp',
+                  'Home',
+                  'End',
+                ];
+                if (!keys.includes(event.key)) return;
+                event.preventDefault();
+                const next =
+                  event.key === 'Home'
+                    ? 1
+                    : event.key === 'End'
+                      ? 5
+                      : ((n -
+                          1 +
+                          (event.key === 'ArrowRight' ||
+                          event.key === 'ArrowDown'
+                            ? 1
+                            : 4)) %
+                          5) +
+                        1;
+                onChange(next);
+                buttons.current[next - 1]?.focus();
+              }}
+              className="flex size-11 items-center justify-center rounded-md hover:bg-muted"
             >
-              <input
-                type="radio"
-                name="rating"
-                value={n}
-                aria-label={`${n} av 5 stjärnor`}
-                checked={value === n}
-                onChange={() => onChange(n)}
-                className="peer sr-only"
-              />
               <Star
                 aria-hidden="true"
                 className={cn(
-                  'size-7 rounded-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ring',
+                  'size-7',
                   n <= (value || 0)
                     ? 'fill-primary text-primary'
                     : 'text-muted-foreground',
                 )}
               />
-            </label>
+            </button>
           ))}
         </div>
         <Button

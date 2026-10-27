@@ -18,7 +18,7 @@ export function BottomNav({
   return (
     <nav
       aria-label="Huvudnavigering"
-      className="fixed inset-x-0 bottom-0 z-20 border-t bg-card pb-[env(safe-area-inset-bottom)]"
+      className="app-bottom-nav fixed inset-x-0 z-20 border-t bg-card pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto grid max-w-xl grid-cols-3 gap-2 px-3 py-2">
         {[

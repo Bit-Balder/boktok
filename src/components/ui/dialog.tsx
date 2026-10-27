@@ -18,7 +18,7 @@ export function Dialog({
     <Primitive.Root open={open} onOpenChange={onOpenChange}>
       <Primitive.Portal>
         <Primitive.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Primitive.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-card p-6 shadow-xl">
+        <Primitive.Content className="dialog-content fixed left-1/2 z-50 max-h-[min(90dvh,calc(var(--visible-height,100dvh)-2rem))] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg border bg-card p-6 shadow-xl">
           <Primitive.Title className="pr-8 font-serif text-2xl">
             {title}
           </Primitive.Title>

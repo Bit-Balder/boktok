@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, screen, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../src/App';
 import { DatePicker } from '../src/components/ui/date-picker';
@@ -73,20 +80,16 @@ describe('nya användarflöden', () => {
     await user.type(screen.getByLabelText('Titel *'), 'Ny bok');
     await user.click(screen.getByRole('radio', { name: '3 av 5 stjärnor' }));
     expect(
-      (
-        screen.getByRole('radio', {
-          name: '3 av 5 stjärnor',
-        }) as HTMLInputElement
-      ).checked,
-    ).toBe(true);
+      screen
+        .getByRole('radio', { name: '3 av 5 stjärnor' })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
     await user.click(screen.getByRole('button', { name: 'Rensa betyg' }));
     expect(
-      (
-        screen.getByRole('radio', {
-          name: '3 av 5 stjärnor',
-        }) as HTMLInputElement
-      ).checked,
-    ).toBe(false);
+      screen
+        .getByRole('radio', { name: '3 av 5 stjärnor' })
+        .getAttribute('aria-checked'),
+    ).toBe('false');
     await user.click(screen.getByRole('radio', { name: '3 av 5 stjärnor' }));
     await user.click(screen.getByRole('button', { name: 'Spara bok' }));
     expect(localLibrary.load().find((b) => b.title === 'Ny bok')?.rating).toBe(
@@ -117,8 +120,19 @@ describe('nya användarflöden', () => {
     await user.click(
       screen.getByRole('button', { name: 'Visa befintlig bok' }),
     );
-    expect(screen.getByText('Behåll mig')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Tillbaka' }));
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Anteckningar, sparad anteckning finns',
+      }),
+    );
+    expect(
+      (
+        within(screen.getByRole('dialog')).getByLabelText(
+          'Egna anteckningar',
+        ) as HTMLTextAreaElement
+      ).value,
+    ).toBe('Behåll mig');
+    await user.click(screen.getByRole('button', { name: 'Stäng' }));
     await user.click(screen.getByRole('button', { name: 'Spara bok' }));
     await user.click(screen.getByRole('button', { name: 'Lägg till ändå' }));
     expect(localLibrary.load()).toHaveLength(2);
@@ -127,9 +141,7 @@ describe('nya användarflöden', () => {
   it('kontrollerar även böcker som sparats i en annan flik', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(
-      screen.getByRole('button', { name: 'Lägg till din första bok' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
     await user.type(screen.getByLabelText('Titel *'), 'Min bok');
     localLibrary.save([book]);
     await user.click(screen.getByRole('button', { name: 'Spara bok' }));
@@ -142,9 +154,7 @@ describe('nya användarflöden', () => {
     const reload = vi.fn();
     const user = userEvent.setup();
     render(<App reload={reload} />);
-    await user.click(
-      screen.getByRole('button', { name: 'Lägg till din första bok' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
     await user.type(screen.getByLabelText('Titel *'), 'Utkast');
     await user.click(screen.getByRole('button', { name: 'Mitt bibliotek' }));
     expect(
@@ -260,9 +270,7 @@ it('granskar sökträffar och behåller anteckningar och betyg vid byte av bok',
   vi.stubGlobal('fetch', fetchMock);
   const user = userEvent.setup();
   render(<App />);
-  await user.click(
-    screen.getByRole('button', { name: 'Lägg till din första bok' }),
-  );
+  await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
   await user.type(screen.getByLabelText('Titel *'), 'Egen titel');
   await user.type(
     screen.getByLabelText('Egna anteckningar'),
@@ -271,15 +279,16 @@ it('granskar sökträffar och behåller anteckningar och betyg vid byte av bok',
   await user.click(screen.getByRole('radio', { name: '4 av 5 stjärnor' }));
   await user.type(screen.getByLabelText('Sök i bokdatabaser'), 'Hittad bok');
   await user.click(screen.getByRole('button', { name: 'Sök' }));
-  await user.click(
-    await screen.findByRole('button', { name: /Hittad bok/ }),
-  );
+  await user.click(await screen.findByRole('button', { name: /Hittad bok/ }));
   expect(localLibrary.load()).toHaveLength(0);
   await user.click(
     screen.getByRole('button', { name: 'Använd bokuppgifterna' }),
   );
   expect((screen.getByLabelText('Titel *') as HTMLInputElement).value).toBe(
     'Hittad bok',
+  );
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByLabelText('Titel *')),
   );
   expect(
     (screen.getByLabelText('Egna anteckningar') as HTMLInputElement).value,
