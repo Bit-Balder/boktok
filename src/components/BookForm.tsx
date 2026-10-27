@@ -18,6 +18,7 @@ export function BookForm({
   error,
   editing,
   blocked = false,
+  actionsVisible = true,
 }: {
   draft: BookInput;
   onChange: (input: BookInput) => void;
@@ -26,6 +27,7 @@ export function BookForm({
   error: string;
   editing: boolean;
   blocked?: boolean;
+  actionsVisible?: boolean;
 }) {
   const [validation, setValidation] = useState('');
   function patch(update: Partial<BookInput>) {
@@ -149,12 +151,14 @@ export function BookForm({
           {validation || error}
         </p>
       )}
-      <FormActions
-        formId="book-form"
-        editing={editing}
-        disabled={blocked || !draft.title.trim()}
-        onCancel={onCancel}
-      />
+      {actionsVisible && (
+        <FormActions
+          formId="book-form"
+          editing={editing}
+          disabled={blocked || !draft.title.trim()}
+          onCancel={onCancel}
+        />
+      )}
     </form>
   );
 }

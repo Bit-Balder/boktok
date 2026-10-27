@@ -128,7 +128,7 @@ Prova Google Books på den publicerade adressen efter bygget. Kontrollera status
 
 ## Iteration 4 – konto och privat molnbibliotek
 
-Inställningar innehåller inloggning med Google och e-post/lösenord, registrering, lösenordsåterställning och utloggning. Firebase Authentication bevarar inloggningen på enheten. Google använder popupfönster för att undvika problem med tredjepartslagring på GitHub Pages. Vid blockerade popupfönster kan användaren tillåta dem eller välja e-postinloggning.
+Kontodialogen innehåller inloggning med Google och e-post/lösenord, registrering, lösenordsåterställning och utloggning. Firebase Authentication bevarar inloggningen på enheten. Google använder popupfönster för att undvika problem med tredjepartslagring på GitHub Pages. Vid blockerade popupfönster kan användaren tillåta dem eller välja e-postinloggning.
 
 Gästbiblioteket fortsätter använda `boktok.library.v1`. Inloggade användare läser och skriver endast sitt eget molnbibliotek under `users/{uid}/books/{bookId}`. Molnböcker kopieras aldrig till gästlagringen. Firestore använder minnescache. Byte av konto skapar en ny biblioteksvy och stänger den gamla prenumerationen. Misslyckade molnanrop skriver inte till gästbiblioteket.
 
@@ -136,7 +136,7 @@ Snabbändringar använder transaktioner för att bevara samtidiga ändringar. Kn
 
 ### Import
 
-Efter inloggning erbjuds import av lokala böcker i Inställningar. Användaren granskar en bok i taget. Matchande molnböcker visas innan användaren väljer att importera ändå eller hoppa över. Om en ny matchning tillkommer stoppas importen för ny granskning.
+Efter inloggning erbjuds import av lokala böcker i profildialogen. Användaren granskar en bok i taget. Matchande molnböcker visas innan användaren väljer att importera ändå eller hoppa över. Om en ny matchning tillkommer stoppas importen för ny granskning.
 
 Varje beslut får ett privat kvitto under `users/{uid}/imports/{lokaltBookId}`. Import och kvitto skrivs atomiskt. Upprepade försök skapar inte flera kopior. Ett överhoppningsbeslut sparas också och erbjuds därför inte igen för samma lokala bok på samma konto. Importen uppdaterar inte tidigare importerade böcker automatiskt.
 
@@ -212,3 +212,11 @@ Appens adress är https://bit-balder.github.io/boktok/. Vite använder `/boktok/
 Automatiska tester täcker befintlig lagring, registrering, redigering, borttagning, sökning, ISBN, datanormalisering och felhantering. De testar även dubblettval, stjärnor, kalender, tema, bokuppslag och omladdningsskydd.
 
 GitHub Actions kör tester, kodkontroll och produktionsbygge före publicering. Konton och import testas med simulerade anrop. Säkerhetsregler, samtidiga molnändringar och import testas dessutom med Firestore-emulatorn. Riktiga Google- och App Check-inställningar samt visuell mobilkontroll behöver verifieras efter publicering.
+
+## Kontoknapp och kompakta bokkort
+
+Inloggningen har en egen knapp högst upp till höger. Dialogen visar e-postinloggning, Google, lösenordsåterställning och registrering i den ordningen. Efter inloggning visar knappen profilbilden eller en profilsymbol. Profildialogen visar namn, e-post, bokantal, utloggning och import av lokala böcker. Inställningar innehåller utseende och omladdning.
+
+Bokformulärets åtgärder visas när ett bokval eller en ändring gjort formuläret osparat. Avbryt och Spara är fristående knappar ovanför bottenmenyn. Spara är större och knapparna ligger centrerade utan gemensam bakgrund. Marginalerna anpassas när knapparna visas.
+
+Bokkorten visar lässtatus och fem stjärnor på samma rad. En anteckningsikon nere till höger visar sparade anteckningar. Smala kort använder kompakta varianter av samma status- och stjärnkomponenter.

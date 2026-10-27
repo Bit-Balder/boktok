@@ -165,6 +165,8 @@ describe('snabbhantering', () => {
       screen.getAllByRole('button', { name: 'Lägg till bok' }),
     ).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Lägg till bok' }));
+    expect(screen.queryByRole('button', { name: 'Spara bok' })).toBeNull();
+    await user.type(screen.getByLabelText('Egna anteckningar'), 'Ett utkast');
     const save = screen.getByRole('button', { name: 'Spara bok' });
     expect(save.getAttribute('form')).toBe(
       screen.getByRole('form', { name: 'Bokuppgifter' }).id,
