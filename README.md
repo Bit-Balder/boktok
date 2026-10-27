@@ -126,17 +126,80 @@ Vid lokal utveckling kopierar du `.env.example` till `.env.local` och fyller i `
 
 Prova Google Books på den publicerade adressen efter bygget. Kontrollera status, stjärnor, anteckningar och omladdning. Prova även liten mobilskärm, ljust och mörkt läge, kalender och fasta knappar med öppet tangentbord. Lokala tester använder simulerade boktjänster och en testnyckel. De verifierar inte den riktiga nyckelns Google-inställningar.
 
+## Iteration 4 – konto och privat molnbibliotek
+
+Inställningar innehåller inloggning med Google och e-post/lösenord, registrering, lösenordsåterställning och utloggning. Firebase Authentication bevarar inloggningen på enheten. Google använder popupfönster för att undvika problem med tredjepartslagring på GitHub Pages. Vid blockerade popupfönster kan användaren tillåta dem eller välja e-postinloggning.
+
+Gästbiblioteket fortsätter använda `boktok.library.v1`. Inloggade användare läser och skriver endast sitt eget molnbibliotek under `users/{uid}/books/{bookId}`. Molnböcker kopieras aldrig till gästlagringen. Firestore använder minnescache. Byte av konto skapar en ny biblioteksvy och stänger den gamla prenumerationen. Misslyckade molnanrop skriver inte till gästbiblioteket.
+
+Snabbändringar använder transaktioner för att bevara samtidiga ändringar. Knappar blockeras medan en skrivning pågår. Bokuppslag och dubblettkontroll fungerar för båda lagringarna. Molnlagring kräver anslutning. Gränssnittet bekräftar sparning först efter lyckat serversvar.
+
+### Import
+
+Efter inloggning erbjuds import av lokala böcker i Inställningar. Användaren granskar en bok i taget. Matchande molnböcker visas innan användaren väljer att importera ändå eller hoppa över. Om en ny matchning tillkommer stoppas importen för ny granskning.
+
+Varje beslut får ett privat kvitto under `users/{uid}/imports/{lokaltBookId}`. Import och kvitto skrivs atomiskt. Upprepade försök skapar inte flera kopior. Ett överhoppningsbeslut sparas också och erbjuds därför inte igen för samma lokala bok på samma konto. Importen uppdaterar inte tidigare importerade böcker automatiskt.
+
+Lokala böcker raderas aldrig av importen, oavsett resultat. Om en lokal bok ändras före import krävs ny granskning. Varje konto har egna importkvitton. En annan användare kan därför importera sina lokala böcker utan att blanda bibliotek.
+
+### Konfiguration före publicering
+
+Firebase-projektet är `boktok-c5e14`. Webbappens offentliga projektinställningar finns i `src/lib/firebase/client.ts`. Google Analytics aktiveras inte.
+
+Lägg till dessa repository-secrets i GitHub:
+
+| Secret                       | Värde                                        |
+| ---------------------------- | -------------------------------------------- |
+| `FIREBASE_API_KEY`           | Webbappens Firebase `apiKey`                 |
+| `FIREBASE_APPCHECK_SITE_KEY` | ID/webbplatsnyckeln för reCAPTCHA Enterprise |
+
+Bygget läser dem som `VITE_FIREBASE_API_KEY` och `VITE_FIREBASE_APPCHECK_SITE_KEY`. Båda värdena är offentliga i den färdiga webbläsarappen. Behåll Firebase-nyckelns Firebase-begränsningar. Använd inte Google Books-nyckeln här. Inga privata servicekontonycklar behövs i appen.
+
+1. Skapa Firestore **Standard edition**, databasen **`(default)`**, i **`europe-north2` (Stockholm)**.
+2. Aktivera **Email/Password** och **Google** under Authentication.
+3. Lägg till `bit-balder.github.io` under Authentication → Settings → Authorized domains.
+4. Registrera webbappen under App Check med **reCAPTCHA Enterprise** och samma poängbaserade webbplatsnyckel som i GitHub.
+5. Tillåt domänen `bit-balder.github.io` i reCAPTCHA-inställningarna.
+6. **Publicera reglerna från `firestore.rules` innan molnbiblioteket provas.**
+
+Reglerna publiceras inte av GitHub Pages. Öppna Firebase Console → Firestore → Rules, ersätt startreglerna med innehållet i `firestore.rules` och välj **Publish**. Alternativt kan en behörig administratör köra:
+
+```sh
+npx firebase login
+npx firebase deploy --only firestore:rules --project boktok-c5e14
+```
+
+Reglerna nekar andra användares åtkomst och kontrollerar bokmodellens fält. Importkvitton kan inte skrivas över. Behåll Production mode tills reglerna är publicerade. Gör inte databasen öppen för att lösa ett behörighetsfel.
+
+App Check initieras före Auth och Firestore, med automatisk tokenförnyelse. Vänta med **Enforce** tills den publicerade appen visar giltiga anrop i App Check. Aktivera därefter skyddet för de använda tjänsterna. App Check ersätter inte inloggning eller Firestore-regler.
+
+### Lokala kontroller
+
+```sh
+npm test
+npm run lint
+npm run build
+npm run test:rules
+```
+
+Regeltesterna kräver Java 17 eller senare för den inkluderade Firebase CLI-versionen. Java 21 rekommenderas för framtida CLI-versioner. Testerna startar endast Firestore-emulatorn med projekt-ID `demo-boktok`. De kontaktar inte produktionsdatabasen.
+
+För manuell utveckling kan `.env.local` innehålla testvärden för Firebase-nycklarna och `VITE_FIREBASE_EMULATORS=true`. Starta då både Auth- och Firestore-emulatorerna. Produktionsbygget ignorerar emulatorvalet. En lokal körning mot riktiga Firebase kräver en separat tillåten utvecklingsdomän och korrekt App Check-konfiguration.
+
+### Kontroll efter sammanfogning
+
+Prova Google-inloggning, registrering, lösenordsåterställning och utloggning på den publicerade adressen. Kontrollera med två konton att böckerna hålls isär. Prova import med en dubblett och ladda om för att kontrollera att samma lokala bok inte importeras igen. Kontrollera också att gästbiblioteket finns kvar efter utloggning. Inloggning i hemskärmens genväg och mobilens popuphantering behöver provas på riktiga enheter.
+
 ## Nästa steg
 
 1. ISBN-skanning med ZXing och omslagstolkning med Tesseract.js.
-2. Firebase Authentication, Firestore, testade säkerhetsregler och säker import av lokala böcker.
-3. Fullständig statistikvy och fler tester på fysiska mobiler.
+2. Fullständig statistikvy och fler tester på fysiska mobiler.
 
-Firebase är inte installerat eller aktiverat. Nästa fas behöver ett Firebase-projekt och aktiverad e-postinloggning. Hemliga servernycklar får aldrig placeras i Vite-miljövariabler eller Git.
+Hemliga servernycklar får aldrig placeras i Vite-miljövariabler eller Git.
 
 ## Driftsättning
 
-`npm run build` skapar `dist/`. Publicera den mappen på en statisk webbserver över HTTPS. Appen behöver ingen egen server. Bokuppslag kontaktar externa boktjänster. Använd en stabil adress för att behålla tillgången till lokalt sparade böcker.
+`npm run build` skapar `dist/`. Publicera den mappen på en statisk webbserver över HTTPS. Appen behöver ingen egen server. Bokuppslag kontaktar externa boktjänster. Konton och molnbibliotek använder Firebase. Använd en stabil adress för att behålla tillgången till lokalt sparade böcker.
 
 GitHub Actions bygger och publicerar appen vid varje ändring på `main`. Arbetsflödet finns i `.github/workflows/deploy.yml`. Det installerar beroenden, kör kodkontroll och tester, bygger appen och publicerar `dist/` på GitHub Pages.
 
@@ -148,4 +211,4 @@ Appens adress är https://bit-balder.github.io/boktok/. Vite använder `/boktok/
 
 Automatiska tester täcker befintlig lagring, registrering, redigering, borttagning, sökning, ISBN, datanormalisering och felhantering. De testar även dubblettval, stjärnor, kalender, tema, bokuppslag och omladdningsskydd.
 
-GitHub Actions kör tester, kodkontroll och produktionsbygge före publicering. Förhandsvisningsservern saknas i utvecklingsmiljön. Visuell mobilkontroll återstår.
+GitHub Actions kör tester, kodkontroll och produktionsbygge före publicering. Konton och import testas med simulerade anrop. Säkerhetsregler, samtidiga molnändringar och import testas dessutom med Firestore-emulatorn. Riktiga Google- och App Check-inställningar samt visuell mobilkontroll behöver verifieras efter publicering.

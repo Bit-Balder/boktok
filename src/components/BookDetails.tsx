@@ -18,12 +18,14 @@ export function BookDetails({
   onUpdate,
   error,
   onDirtyChange,
+  busy = false,
 }: {
   selected: Book;
   setSelected: (book: Book | null) => void;
   onEdit: (book: Book) => void;
-  onRemove: (id: string) => boolean;
-  onUpdate: (id: string, change: BookChange) => boolean;
+  busy?: boolean;
+  onRemove: (id: string) => boolean | Promise<boolean>;
+  onUpdate: (id: string, change: BookChange) => boolean | Promise<boolean>;
   error: string;
   onDirtyChange: (dirty: boolean) => void;
 }) {
@@ -72,7 +74,7 @@ export function BookDetails({
       <Dialog
         open
         onOpenChange={(open) => {
-          if (!open) leave('close');
+          if (!open && !busy) leave('close');
         }}
         title={deleting ? 'Ta bort boken?' : selected.title}
         description={
@@ -92,13 +94,18 @@ export function BookDetails({
               </p>
             )}
             <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setDeleting(false)}>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => setDeleting(false)}
+              >
                 Avbryt
               </Button>
               <Button
                 variant="destructive"
-                onClick={() => {
-                  if (onRemove(selected.id)) setSelected(null);
+                disabled={busy}
+                onClick={async () => {
+                  if (await onRemove(selected.id)) setSelected(null);
                 }}
               >
                 Ta bort bok
@@ -106,7 +113,7 @@ export function BookDetails({
             </div>
           </div>
         ) : (
-          <div className="space-y-5">
+          <fieldset disabled={busy} className="space-y-5">
             <div className="flex gap-4">
               <BookCover
                 title={selected.title}
@@ -168,10 +175,12 @@ export function BookDetails({
               <form
                 aria-label="Bokens anteckningar"
                 className="space-y-3 rounded-lg bg-muted/40 p-3"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (
-                    onUpdate(selected.id, { notes: notes.trim() || undefined })
+                    await onUpdate(selected.id, {
+                      notes: notes.trim() || undefined,
+                    })
                   ) {
                     setNotesOpen(false);
                   }
@@ -250,7 +259,7 @@ export function BookDetails({
                 Ta bort
               </Button>
             </div>
-          </div>
+          </fieldset>
         )}
       </Dialog>
       <Dialog

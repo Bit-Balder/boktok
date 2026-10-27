@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   test: {
     environment: 'jsdom',
+    exclude: ['tests/firestore.rules.test.ts', 'node_modules/**', 'dist/**'],
     restoreMocks: true,
     setupFiles: ['./tests/setup.ts'],
   },

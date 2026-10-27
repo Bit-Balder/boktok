@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BookOpen, ShieldCheck } from 'lucide-react';
 import { useLibrary } from './hooks/useLibrary';
+import { useAccount, type AccountController } from './hooks/useAccount';
+import type { LibraryController } from './lib/library';
+import { AccountPanel } from './components/AccountPanel';
+const CloudSession = lazy(() => import('./components/CloudSession'));
 import { useKeyboardViewport } from './hooks/useKeyboardViewport';
 import type { Book, BookInput } from './lib/books';
 import type { Duplicate } from './lib/duplicates';
@@ -35,7 +39,52 @@ export default function App({
 }: {
   reload?: () => void;
 }) {
-  const library = useLibrary();
+  const account = useAccount();
+  return account.user ? (
+    <Suspense
+      fallback={
+        <p role="status" className="p-8 text-center">
+          Öppnar ditt molnbibliotek…
+        </p>
+      }
+    >
+      <CloudSession key={account.user.uid} account={account} reload={reload} />
+    </Suspense>
+  ) : (
+    <GuestSession key="guest" account={account} reload={reload} />
+  );
+}
+function GuestSession({
+  account,
+  reload,
+}: {
+  account: AccountController;
+  reload: () => void;
+}) {
+  const local = useLibrary();
+  return (
+    <Workspace
+      account={account}
+      reload={reload}
+      library={{
+        ...local,
+        pending: false,
+        loading: !account.ready,
+        blocked: local.blocked || !account.ready,
+        imports: null,
+      }}
+    />
+  );
+}
+export function Workspace({
+  account,
+  library,
+  reload,
+}: {
+  account: AccountController;
+  library: LibraryController;
+  reload: () => void;
+}) {
   useKeyboardViewport();
   const [notesDirty, setNotesDirty] = useState(false);
   const [scrollRequest, setScrollRequest] = useState(0);
@@ -102,12 +151,13 @@ export default function App({
     });
   }
   function closeEditor() {
+    if (library.pending) return;
     guard(() => setEditor(null));
   }
-  function save(input: BookInput, allowDuplicate = false) {
+  async function save(input: BookInput, allowDuplicate = false) {
     if (saving.current) return;
     saving.current = true;
-    const result = library.save(input, editor?.id, allowDuplicate);
+    const result = await library.save(input, editor?.id, allowDuplicate);
     if (result.status !== 'saved') saving.current = false;
     if (result.status === 'duplicate') {
       setDuplicates({ matches: result.matches, input });
@@ -174,6 +224,7 @@ export default function App({
     return () => cancelAnimationFrame(frame);
   }, [scrollRequest]);
   function refresh() {
+    if (library.pending) return;
     if (dirty)
       setConfirmation({
         title: 'Ladda om med osparade ändringar?',
@@ -214,11 +265,34 @@ export default function App({
           </button>
           <div className="flex items-center gap-2 rounded-full bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
             <ShieldCheck className="size-4" />
-            Sparas på din enhet
+            {account.user ? 'Privat molnbibliotek' : 'Sparas på din enhet'}
           </div>
         </div>
       </header>
       <main id="main" className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
+        {library.loading && (
+          <p
+            role="status"
+            className="mb-5 rounded-lg border bg-card p-4 text-sm"
+          >
+            {account.user ? 'Hämtar ditt molnbibliotek…' : 'Hämtar ditt konto…'}
+          </p>
+        )}
+        {library.pending && (
+          <p role="status" className="mb-4 text-sm text-primary">
+            Sparar ändringen…
+          </p>
+        )}
+        {library.imports && library.imports.items.length > 0 && (
+          <div className="mb-6 rounded-lg border bg-card p-4">
+            <p className="mb-3 text-sm">
+              Du har lokala böcker som kan importeras till ditt konto.
+            </p>
+            <Button variant="outline" onClick={() => setSettings(true)}>
+              Granska lokala böcker
+            </Button>
+          </div>
+        )}
         {editor ? (
           <section className="mx-auto max-w-2xl">
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-primary">
@@ -241,18 +315,21 @@ export default function App({
                 draft={editor.draft}
                 onChange={(draft) => setEditor({ ...editor, draft })}
                 error={library.error}
-                blocked={library.blocked}
+                blocked={library.blocked || library.pending}
                 onCancel={closeEditor}
-                onSave={(input) => save(input)}
+                onSave={(input) => {
+                  void save(input);
+                }}
               />
             </div>
           </section>
         ) : (
           <LibraryView
             books={library.books}
-            blocked={library.blocked}
+            blocked={library.blocked || library.pending}
             error={selected ? '' : library.error}
             notice={notice}
+            cloud={Boolean(account.user)}
             onOpen={setSelected}
           />
         )}
@@ -260,7 +337,7 @@ export default function App({
       <BottomNav
         editing={editing}
         settings={settings}
-        blocked={library.blocked}
+        blocked={library.blocked || library.pending}
         onLibrary={closeEditor}
         onAdd={add}
         onSettings={() => setSettings(true)}
@@ -269,7 +346,26 @@ export default function App({
         open={settings}
         onOpenChange={setSettings}
         onRefresh={refresh}
-      />
+        busy={library.pending}
+        cloud={Boolean(account.user)}
+      >
+        <AccountPanel
+          account={account}
+          library={library}
+          runAction={(run) => {
+            if (library.pending) return;
+            if (dirty)
+              setConfirmation({
+                title: 'Lämna osparade ändringar?',
+                description:
+                  'Spara dina ändringar innan du byter konto, eller lämna dem.',
+                label: 'Lämna ändringarna',
+                run,
+              });
+            else run();
+          }}
+        />
+      </Settings>
       {duplicates && (
         <DuplicateDialog
           matches={duplicates.matches}
@@ -278,7 +374,9 @@ export default function App({
             setDuplicates(null);
             setSelected(book);
           }}
-          onConfirm={() => save(duplicates.input, true)}
+          onConfirm={() => {
+            void save(duplicates.input, true);
+          }}
         />
       )}
       {selected && (
@@ -291,9 +389,10 @@ export default function App({
           onEdit={edit}
           error={library.error}
           onUpdate={library.update}
+          busy={library.pending}
           onDirtyChange={setNotesDirty}
-          onRemove={(id) => {
-            const saved = library.remove(id);
+          onRemove={async (id) => {
+            const saved = await library.remove(id);
             if (saved) setNotice('Boken har tagits bort.');
             return saved;
           }}
