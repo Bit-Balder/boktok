@@ -196,7 +196,7 @@ Boksökningen frågar Libris först, Google Books därefter och Open Library sis
 
 Libris använder `https://libris.kb.se/find.jsonld` och behöver ingen API-nyckel. Sökningen begränsas till utgåvor (`Instance`), så bibliotekens exemplarposter inte visas som separata böcker. Fritext söker titel eller författare. Valen Titel och Författare använder särskilda fältfilter och kontrollerar även resultatets bokuppgifter. Upp till 40 poster hämtas och högst 12 användbara träffar visas.
 
-ISBN-sökning frågar efter ISBN-13 och motsvarande ISBN-10 när det finns. Alla källor kontrollerar att resultatets ISBN matchar den sökta utgåvan. Appen tar inte ISBN från relaterade verk och fyller inte i ett annat ISBN automatiskt. Titel, författare, bild och sammanfattning fylls i när källan erbjuder dem. Saknade bilder eller sammanfattningar innebär inte att nästa källa frågas.
+ISBN-sökning frågar efter ISBN-13 och motsvarande ISBN-10 när det finns. Alla källor kontrollerar att resultatets ISBN matchar den sökta utgåvan. Appen tar inte ISBN från relaterade verk och fyller inte i ett annat ISBN automatiskt. Titel, författare, bild och sammanfattning fylls i när källan erbjuder dem. Saknade sammanfattningar innebär inte att nästa källa frågas. Saknade omslag kompletteras efter bokvalet enligt nedan.
 
 Libris API-dokumentation finns på https://github.com/libris/libris-api-docs. HTTP-prov med Boktoks Origin-header tilläts av Libris. Fullständig kontroll från den publicerade appens webbläsare görs efter sammanfogning.
 
@@ -257,3 +257,11 @@ Inloggningen har en egen knapp högst upp till höger. Dialogen visar e-postinlo
 Bokformulärets åtgärder visas när ett bokval eller en ändring gjort formuläret osparat. Avbryt och Spara är fristående knappar ovanför bottenmenyn. Spara är större och knapparna ligger centrerade utan gemensam bakgrund. Marginalerna anpassas när knapparna visas.
 
 Bokkorten visar lässtatus och fem stjärnor på samma rad. En anteckningsikon nere till höger visar sparade anteckningar. Smala kort använder kompakta varianter av samma status- och stjärnkomponenter.
+
+## Automatiska omslag efter bokval
+
+Om den valda boken saknar omslag söker appen med titel och författare som vanlig fritext hos Google Books. Om inget passande omslag hittas försöker den hos Open Library. Inom varje källa prioriteras motsvarande ISBN-10/ISBN-13. Annars används första omslaget med matchande titel, även om ISBN saknas eller gäller en annan utgåva. Undertitlar kan skilja sig. Användaren kan ändra bildadressen via Redigera bok.
+
+Omslagshämtningen startar efter bokvalet och fördröjer inte sökresultaten. Formuläret visar Hämtar omslag medan hämtningen pågår. Användaren kan fortsätta fylla i uppgifter. Spara blir tillgänglig när hämtningen avslutas, även om inget omslag hittades. Varje källa har åtta sekunders tidsgräns.
+
+Endast omslagsadressen kompletteras. Titel, författare, ISBN och övriga bokuppgifter behålls. Befintliga omslag ersätts inte. Ändring av titel, författare, ISBN eller bildadress avbryter hämtningen. Sena svar ignoreras även när formuläret stängts eller en annan bok valts. Titel och författare skickas till omslagskällorna; anteckningar och lässtatus skickas inte. Inga nya nycklar behövs.

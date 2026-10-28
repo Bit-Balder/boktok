@@ -3,6 +3,7 @@ import { canonicalIsbn } from '../isbn';
 import { librisParams, normalizeLibris } from './libris';
 export type SearchMode = 'all' | 'isbn' | 'title' | 'author';
 export interface BookResult {
+  isbns?: string[];
   key: string;
   source: string;
   book: BookInput;
@@ -72,6 +73,7 @@ export function normalizeGoogle(
       {
         key: `google:${string(raw.id) || title}`,
         source: 'Google Books',
+        isbns: ids.filter((id): id is string => Boolean(id)),
         book: {
           title,
           authors: strings(info.authors),
@@ -105,6 +107,9 @@ export function normalizeOpenLibrary(
       {
         key: `openlibrary:${string(info.key) || title}`,
         source: 'Open Library',
+        isbns: strings(info.isbn)
+          .map(canonicalIsbn)
+          .filter((id): id is string => Boolean(id)),
         book: {
           title,
           authors: strings(info.author_name),

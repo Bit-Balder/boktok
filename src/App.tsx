@@ -9,6 +9,7 @@ import { useKeyboardViewport } from './hooks/useKeyboardViewport';
 import type { Book, BookInput } from './lib/books';
 import type { Duplicate } from './lib/duplicates';
 import type { BookResult } from './lib/lookup';
+import { findCover } from './lib/lookup/cover';
 import { LibraryView } from './components/LibraryView';
 import { BookForm } from './components/BookForm';
 import { BookLookup } from './components/BookLookup';
@@ -19,6 +20,7 @@ import { DuplicateDialog } from './components/DuplicateDialog';
 import { Dialog } from './components/ui/dialog';
 import { Button } from './components/ui/button';
 interface Editor {
+  coverBook?: BookInput;
   id?: string;
   draft: BookInput;
   initial: BookInput;
@@ -91,6 +93,24 @@ export function Workspace({
   const formStartRef = useRef<HTMLDivElement>(null);
   const saving = useRef(false);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [coverFinished, setCoverFinished] = useState<BookInput>();
+  const coverBook = editor?.coverBook;
+  const coverLoading = Boolean(coverBook && coverFinished !== coverBook);
+  useEffect(() => {
+    if (!coverBook) return;
+    const controller = new AbortController();
+    void findCover(coverBook, controller.signal).then((coverUrl) => {
+      if (controller.signal.aborted) return;
+      if (coverUrl)
+        setEditor((current) =>
+          current?.coverBook === coverBook && !current.draft.coverUrl
+            ? { ...current, draft: { ...current.draft, coverUrl } }
+            : current,
+        );
+      setCoverFinished(coverBook);
+    });
+    return () => controller.abort();
+  }, [coverBook]);
   const [selected, setSelected] = useState<Book | null>(null);
   const [settings, setSettings] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -157,7 +177,7 @@ export function Workspace({
     guard(() => setEditor(null));
   }
   async function save(input: BookInput, allowDuplicate = false) {
-    if (saving.current) return;
+    if (saving.current || coverLoading) return;
     saving.current = true;
     const result = await library.save(input, editor?.id, allowDuplicate);
     if (result.status !== 'saved') saving.current = false;
@@ -176,11 +196,13 @@ export function Workspace({
   }
   function choose(result: BookResult) {
     const apply = () => {
+      setCoverFinished(undefined);
       setScrollRequest((request) => request + 1);
       setEditor((current) =>
         current
           ? {
               ...current,
+              coverBook: result.book.coverUrl ? undefined : result.book,
               draft: {
                 ...current.draft,
                 title: result.book.title,
@@ -328,14 +350,32 @@ export function Workspace({
               ref={formStartRef}
               className="scroll-mt-6 rounded-lg border bg-card p-5 sm:p-7"
             >
+              {coverLoading && (
+                <p role="status" className="mb-4 text-sm text-muted-foreground">
+                  Hämtar omslag… Du kan fortsätta fylla i bokuppgifterna.
+                </p>
+              )}
               <BookForm
                 key={editor.id || 'new'}
                 editing={Boolean(editor.id)}
                 actionsVisible={editorActionsVisible}
                 draft={editor.draft}
-                onChange={(draft) => setEditor({ ...editor, draft })}
+                onChange={(draft) =>
+                  setEditor({
+                    ...editor,
+                    draft,
+                    coverBook:
+                      draft.coverUrl !== editor.draft.coverUrl ||
+                      draft.title !== editor.draft.title ||
+                      draft.isbn !== editor.draft.isbn ||
+                      JSON.stringify(draft.authors) !==
+                        JSON.stringify(editor.draft.authors)
+                        ? undefined
+                        : editor.coverBook,
+                  })
+                }
                 error={library.error}
-                blocked={library.blocked || library.pending}
+                blocked={library.blocked || library.pending || coverLoading}
                 onCancel={closeEditor}
                 onSave={(input) => {
                   void save(input);
