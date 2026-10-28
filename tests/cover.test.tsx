@@ -1,9 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { chooseCover, findCover } from '../src/lib/lookup/cover';
+import { canLoadCover, chooseCover, findCover } from '../src/lib/lookup/cover';
 import { providers, type BookResult } from '../src/lib/lookup';
 import App from '../src/App';
+import { BookCover } from '../src/components/BookCover';
 import { localLibrary } from '../src/lib/storage';
 const book = {
   title: 'Boken',
@@ -22,8 +29,34 @@ function result(
     book: { ...book, title, isbn, coverUrl },
   };
 }
+const failedImages = new Set<string>();
+const pendingImages = new Set<string>();
+beforeEach(() => {
+  failedImages.clear();
+  pendingImages.clear();
+  vi.stubGlobal(
+    'Image',
+    class {
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      naturalWidth = 140;
+      naturalHeight = 200;
+      referrerPolicy = '';
+      removeAttribute() {}
+      set src(url: string) {
+        if (pendingImages.has(url)) return;
+        queueMicrotask(() => {
+          if (failedImages.has(url)) this.onerror?.();
+          else this.onload?.();
+        });
+      }
+    },
+  );
+});
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
   localStorage.clear();
 });
 describe('automatiska omslag', () => {
@@ -99,8 +132,13 @@ describe('automatiska omslag', () => {
   });
   it('fyller i omslaget och sparar Libris uppgifter efter bokvalet', async () => {
     localStorage.clear();
+    failedImages.add('https://example.com/libris.jpg');
     vi.spyOn(providers[0], 'search').mockResolvedValue([
-      { key: 'libris', source: 'Libris', book },
+      {
+        key: 'libris',
+        source: 'Libris',
+        book: { ...book, coverUrl: 'https://example.com/libris.jpg' },
+      },
     ]);
     vi.spyOn(providers[1], 'search').mockResolvedValue([
       result('Boken', '9780804429573'),
@@ -127,6 +165,90 @@ describe('automatiska omslag', () => {
       ...book,
       coverUrl: 'https://example.com/cover.jpg',
     });
+  });
+  it('går vidare från en trasig Libris-bild och trasiga Google-bilder till Open Library', async () => {
+    const libris = 'https://example.com/libris.jpg';
+    failedImages.add(libris);
+    failedImages.add('https://example.com/google.jpg');
+    const google = vi
+      .fn()
+      .mockResolvedValue([
+        result('Boken', undefined, 'https://example.com/google.jpg'),
+      ]);
+    const open = vi
+      .fn()
+      .mockResolvedValue([
+        result('Boken', undefined, 'https://example.com/open.jpg'),
+      ]);
+    expect(
+      await findCover(
+        { ...book, coverUrl: libris },
+        new AbortController().signal,
+        [
+          { name: 'Google Books', search: google },
+          { name: 'Open Library', search: open },
+        ],
+      ),
+    ).toBe('https://example.com/open.jpg');
+    expect(google).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledOnce();
+  });
+  it('lämnar inget omslag om alla bilder misslyckas', async () => {
+    failedImages.add('https://example.com/cover.jpg');
+    expect(
+      await findCover(
+        { ...book, coverUrl: 'https://example.com/cover.jpg' },
+        new AbortController().signal,
+        [
+          {
+            name: 'Google Books',
+            search: vi.fn().mockResolvedValue([result()]),
+          },
+          {
+            name: 'Open Library',
+            search: vi.fn().mockResolvedValue([result()]),
+          },
+        ],
+      ),
+    ).toBeUndefined();
+  });
+  it('provar nästa matchande bild från samma källa om första bilden är trasig', async () => {
+    failedImages.add('https://example.com/cover.jpg');
+    expect(
+      await findCover(book, new AbortController().signal, [
+        {
+          name: 'Google Books',
+          search: vi
+            .fn()
+            .mockResolvedValue([
+              result(),
+              result('Boken', undefined, 'https://example.com/second.jpg'),
+            ]),
+        },
+      ]),
+    ).toBe('https://example.com/second.jpg');
+  });
+  it('avbryter bildkontrollen och avslutar en bild som aldrig svarar', async () => {
+    vi.useFakeTimers();
+    const url = 'https://example.com/slow.jpg';
+    pendingImages.add(url);
+    const controller = new AbortController();
+    const cancelled = canLoadCover(url, controller.signal);
+    controller.abort();
+    expect(await cancelled).toBe(false);
+    const timedOut = canLoadCover(url, new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await timedOut).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('visar det bruna omslaget när en sparad bild inte kan laddas', () => {
+    const { container } = render(
+      <BookCover title="Boken" url="https://example.com/broken.jpg" />,
+    );
+    fireEvent.error(screen.getByRole('img', { name: 'Omslag: Boken' }));
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(container.querySelector('.bg-cover-background')).not.toBeNull();
+    expect(screen.getByText('Boken')).toBeDefined();
   });
   it('ersätter inte en manuellt angiven bild med ett sent svar', async () => {
     vi.spyOn(providers[0], 'search').mockResolvedValue([
