@@ -12,9 +12,15 @@
   --ring: #37765a;
   --destructive: #a32e30;
   --destructive-foreground: #ffffff;
+  --cover-background: #79563e;
+  --cover-foreground: #fff3df;
+  --cover-spine: #503823;
   --radius: 0.875rem;
 }
 @theme inline {
+  --color-cover-background: var(--cover-background);
+  --color-cover-foreground: var(--cover-foreground);
+  --color-cover-spine: var(--cover-spine);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

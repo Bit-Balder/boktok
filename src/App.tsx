@@ -101,12 +101,12 @@ export function Workspace({
     const controller = new AbortController();
     void findCover(coverBook, controller.signal).then((coverUrl) => {
       if (controller.signal.aborted) return;
-      if (coverUrl)
-        setEditor((current) =>
-          current?.coverBook === coverBook && !current.draft.coverUrl
-            ? { ...current, draft: { ...current.draft, coverUrl } }
-            : current,
-        );
+      setEditor((current) =>
+        current?.coverBook === coverBook &&
+        current.draft.coverUrl === coverBook.coverUrl
+          ? { ...current, draft: { ...current.draft, coverUrl } }
+          : current,
+      );
       setCoverFinished(coverBook);
     });
     return () => controller.abort();
@@ -202,7 +202,7 @@ export function Workspace({
         current
           ? {
               ...current,
-              coverBook: result.book.coverUrl ? undefined : result.book,
+              coverBook: result.book,
               draft: {
                 ...current.draft,
                 title: result.book.title,

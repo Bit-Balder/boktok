@@ -29,7 +29,7 @@ export function BookCover({
     <span
       aria-hidden="true"
       className={cn(
-        'flex flex-col items-center justify-center rounded-r-md border-l-4 border-primary/30 bg-primary/10 text-center text-primary',
+        'flex flex-col items-center justify-center rounded-r-md border-l-4 border-cover-spine bg-cover-background text-center text-cover-foreground',
         compact ? 'h-20 w-14 shrink-0' : 'h-full w-32 gap-4 p-4',
       )}
     >
