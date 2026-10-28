@@ -250,21 +250,23 @@ describe('nya användarflöden', () => {
 });
 
 it('granskar sökträffar och behåller anteckningar och betyg vid byte av bok', async () => {
-  const fetchMock = vi.fn().mockResolvedValue(
-    new Response(
-      JSON.stringify({
-        items: [
-          {
-            id: 'new',
-            volumeInfo: {
-              title: 'Hittad bok',
-              authors: ['Författaren'],
-              industryIdentifiers: [{ identifier: '0306406152' }],
+  const fetchMock = vi.fn().mockImplementation(() =>
+    Promise.resolve(
+      new Response(
+        JSON.stringify({
+          items: [
+            {
+              id: 'new',
+              volumeInfo: {
+                title: 'Hittad bok',
+                authors: ['Författaren'],
+                industryIdentifiers: [{ identifier: '0306406152' }],
+              },
             },
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
     ),
   );
   vi.stubGlobal('fetch', fetchMock);

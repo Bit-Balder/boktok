@@ -203,7 +203,9 @@ it('använder en byggkonfigurerad Google-nyckel utan att skicka anteckningar', a
       new Response(JSON.stringify({ totalItems: 0 }), { status: 200 }),
     );
   vi.stubGlobal('fetch', fetchMock);
-  await providers[0].search('Titel', 'title', new AbortController().signal);
+  await providers
+    .find((provider) => provider.name === 'Google Books')!
+    .search('Titel', 'title', new AbortController().signal);
   const url = new URL(fetchMock.mock.calls[0][0]);
   expect(url.searchParams.get('key')).toBe('test-key-not-a-secret');
   expect([...url.searchParams.keys()].sort()).toEqual([
@@ -227,7 +229,7 @@ it('skiljer en misslyckad sökning från tomma träffar utan teknisk information
   expect(await screen.findByRole('alert')).toBeTruthy();
   expect(screen.queryByText(/Inga böcker hittades/)).toBeNull();
   expect(screen.queryByText(/HTTP 429/)).toBeNull();
-  expect(warn).toHaveBeenCalledTimes(2);
+  expect(warn).toHaveBeenCalledTimes(3);
   expect(warn.mock.calls.flat().join(' ')).not.toContain('https://');
   expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
 });
