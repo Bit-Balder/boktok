@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search, Library, ShieldCheck } from 'lucide-react';
 import {
   selectBooks,
@@ -15,6 +15,8 @@ import { Button } from './ui/button';
 import { Input } from './ui/field';
 import { Select } from './ui/select';
 import { cn } from '../lib/utils';
+const PAGE_SIZE = 20;
+
 export function LibraryView({
   books,
   blocked,
@@ -37,11 +39,22 @@ export function LibraryView({
     useState<NonNullable<BookFilters['rating']>>('all');
   const [notes, setNotes] = useState<NonNullable<BookFilters['notes']>>('all');
   const [year, setYear] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const previousCount = useRef(PAGE_SIZE);
+  const gridRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (visibleCount > previousCount.current) {
+      const nextBook = gridRef.current?.children[previousCount.current];
+      if (nextBook instanceof HTMLElement) nextBook.focus();
+    }
+    previousCount.current = visibleCount;
+  }, [visibleCount]);
   const visible = selectBooks(books, query, status, sort, {
     rating,
     notes,
     year,
   });
+  const displayed = visible.slice(0, visibleCount);
   const filtered = Boolean(
     query ||
     status !== 'all' ||
@@ -50,6 +63,7 @@ export function LibraryView({
     year !== 'all',
   );
   function resetFilters() {
+    setVisibleCount(PAGE_SIZE);
     setQuery('');
     setStatus('all');
     setRating('all');
@@ -112,14 +126,20 @@ export function LibraryView({
               type="search"
               placeholder="Sök titel eller författare…"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setVisibleCount(PAGE_SIZE);
+              }}
               className="pl-10"
             />
           </div>
           <Select
             label="Sortera böcker"
             value={sort}
-            onValueChange={(value) => setSort(value as Sort)}
+            onValueChange={(value) => {
+              setSort(value as Sort);
+              setVisibleCount(PAGE_SIZE);
+            }}
             className="sm:w-52"
             options={[
               { value: 'newest', label: 'Senast tillagda' },
@@ -133,11 +153,15 @@ export function LibraryView({
           <Select
             label="Filtrera på stjärnbetyg"
             value={rating}
-            onValueChange={(value) =>
-              setRating(value as NonNullable<BookFilters['rating']>)
-            }
+            onValueChange={(value) => {
+              setRating(value as NonNullable<BookFilters['rating']>);
+              setVisibleCount(PAGE_SIZE);
+            }}
             options={[
               { value: 'all', label: 'Alla betyg' },
+              { value: 'rated', label: 'Med betyg' },
+              { value: 'min4', label: 'Minst 4 stjärnor' },
+              { value: 'min3', label: 'Minst 3 stjärnor' },
               ...[5, 4, 3, 2, 1].map((n) => ({
                 value: String(n),
                 label: `${n} ${n === 1 ? 'stjärna' : 'stjärnor'}`,
@@ -148,9 +172,10 @@ export function LibraryView({
           <Select
             label="Filtrera på anteckningar"
             value={notes}
-            onValueChange={(value) =>
-              setNotes(value as NonNullable<BookFilters['notes']>)
-            }
+            onValueChange={(value) => {
+              setNotes(value as NonNullable<BookFilters['notes']>);
+              setVisibleCount(PAGE_SIZE);
+            }}
             options={[
               { value: 'all', label: 'Alla anteckningar' },
               { value: 'with', label: 'Med anteckning' },
@@ -160,7 +185,10 @@ export function LibraryView({
           <Select
             label="Filtrera på läsår"
             value={year}
-            onValueChange={setYear}
+            onValueChange={(value) => {
+              setYear(value);
+              setVisibleCount(PAGE_SIZE);
+            }}
             options={[
               { value: 'all', label: 'Alla läsår' },
               ...readingYears(books).map((value) => ({
@@ -182,7 +210,10 @@ export function LibraryView({
               variant={status === value ? 'default' : 'ghost'}
               aria-label={`${label} ${value === 'all' ? books.length : books.filter((book) => book.status === value).length}`}
               aria-pressed={status === value}
-              onClick={() => setStatus(value)}
+              onClick={() => {
+                setStatus(value);
+                setVisibleCount(PAGE_SIZE);
+              }}
             >
               {label}
               <span
@@ -201,11 +232,20 @@ export function LibraryView({
       </section>
       {visible.length > 0 ? (
         <>
-          <p className="mb-5 mt-6 text-sm text-muted-foreground">
-            {visible.length} {visible.length === 1 ? 'bok' : 'böcker'}
+          <p
+            role="status"
+            aria-live="polite"
+            className="mb-5 mt-6 text-sm text-muted-foreground"
+          >
+            Visar {displayed.length} av {visible.length}{' '}
+            {visible.length === 1 ? 'bok' : 'böcker'}
           </p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
-            {visible.map((book) => (
+          <div
+            id="library-books"
+            ref={gridRef}
+            className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4"
+          >
+            {displayed.map((book) => (
               <BookCard
                 key={`${book.id}-${book.updatedAt}`}
                 book={book}
@@ -215,6 +255,17 @@ export function LibraryView({
               />
             ))}
           </div>
+          {displayed.length < visible.length && (
+            <div className="mt-6 flex justify-center">
+              <Button
+                variant="outline"
+                aria-controls="library-books"
+                onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}
+              >
+                Visa fler
+              </Button>
+            </div>
+          )}
         </>
       ) : (
         <div className="my-8 flex flex-col items-center rounded-lg border border-dashed bg-card/50 px-6 py-14 text-center">

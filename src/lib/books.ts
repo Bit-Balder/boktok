@@ -22,7 +22,8 @@ export interface Book {
 export type BookInput = Omit<Book, 'id' | 'createdAt' | 'updatedAt'>;
 export type Sort = 'newest' | 'title' | 'rating' | 'finished';
 export interface BookFilters {
-  rating?: 'all' | 'unrated' | '1' | '2' | '3' | '4' | '5';
+  rating?:
+    'all' | 'rated' | 'unrated' | 'min3' | 'min4' | '1' | '2' | '3' | '4' | '5';
   notes?: 'all' | 'with' | 'without';
   year?: string;
 }
@@ -49,7 +50,11 @@ export function selectBooks(
           filters.rating === 'all' ||
           (filters.rating === 'unrated'
             ? book.rating === undefined
-            : book.rating === Number(filters.rating))) &&
+            : filters.rating === 'rated'
+              ? book.rating !== undefined
+              : filters.rating.startsWith('min')
+                ? (book.rating || 0) >= Number(filters.rating.slice(3))
+                : book.rating === Number(filters.rating))) &&
         (!filters.notes ||
           filters.notes === 'all' ||
           (filters.notes === 'with'
