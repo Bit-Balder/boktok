@@ -58,6 +58,22 @@ describe('bibliotekets kombinerade filter', () => {
       ),
     ).toEqual(['2', '3']);
   });
+  it.each([
+    ['rated', ['1', '2', '4', '5']],
+    ['min3', ['1', '2', '4', '5']],
+    ['min4', ['1', '4', '5']],
+  ] as const)('filtrerar %s och utesluter böcker utan betyg', (rating, ids) => {
+    expect(
+      selectBooks(books, '', 'all', 'newest', { rating }).map(
+        (book) => book.id,
+      ),
+    ).toEqual(ids);
+    expect(
+      selectBooks(books, '', 'all', 'newest', { rating, notes: 'without' }).map(
+        (book) => book.id,
+      ),
+    ).toEqual(rating === 'min4' ? [] : ['2']);
+  });
   it('sorterar efter betyg och läsdatum utan att ändra böckerna', () => {
     const copy = structuredClone(books);
     expect(
